@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'screens/value_proposition_screen.dart';
+import 'screens/gdpr_explanation_screen.dart';
+import 'screens/role_selection_screen.dart';
+import 'screens/registration_screen.dart';
+import 'screens/gdpr_training_screen.dart';
+import 'screens/profile_setup_screen.dart';
 
-class OnboardingScreen extends StatelessWidget {
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  state<OnboardingScreen> createState() => _OnboardingScreenState();
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 // diff screens in Onboarding!
@@ -24,11 +30,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  @override
   void _nextPage() {
     _pageController.nextPage(
       duration: const Duration(milliseconds: 300),
-      curve: Curves.easeIn,
+      curve: Curves.easeInOut,
     );
   }
 
@@ -48,16 +53,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         physics: const NeverScrollableScrollPhysics(),
         children: [
           ValuePropositionScreen(onNext: _nextPage),
-          GdprExplanationScreen(onNext: _nextPage, onBack: _previousPage),
-          RoleSelectionScreen(onNext: _nextPage, onBack: _previousPage),
-          RegistrationScreen(onNext: _nextPage, onBack: _previousPage),
-          GdprTrainingScreen(onNext: _nextPage, onBack: _previousPage),
-          ProfileSetupScreen(
-            onFinish: () {
-              Navigator.pushReplacementNamed(context, '/feed');
-            },
-            onBack: _previousPage,
-          ),
+          GdprExplanationScreen(onNext: _nextPage),
+          RoleSelectionScreen(onNext: _nextPage),
+          RegistrationScreen(onNext: _nextPage),
+          GdprTrainingScreen(onNext: _nextPage),
+          ProfileSetupScreen(onNext: _nextPage),
         ],
       ),
     );
