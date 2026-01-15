@@ -4,15 +4,14 @@ import '../features/auth/welcome_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/feed/feed_screen.dart';
+import '../features/feed/create_post_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/welcome',
-
   redirect: (context, state) {
     final user = FirebaseAuth.instance.currentUser;
     final isLoggedIn = user != null;
 
-    // If logged in and trying to access auth screens, redirect to feed
     if (isLoggedIn &&
         (state.matchedLocation == '/welcome' ||
             state.matchedLocation == '/login' ||
@@ -20,9 +19,8 @@ final appRouter = GoRouter(
       return '/feed';
     }
 
-    return null; // No redirect
+    return null;
   },
-
   routes: [
     GoRoute(
       path: '/welcome',
@@ -34,5 +32,9 @@ final appRouter = GoRouter(
       builder: (context, state) => const OnboardingScreen(),
     ),
     GoRoute(path: '/feed', builder: (context, state) => const FeedScreen()),
+    GoRoute(
+      path: '/create-post',
+      builder: (context, state) => const CreatePostScreen(),
+    ),
   ],
 );
