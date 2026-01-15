@@ -1,7 +1,47 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 class FirebaseService {
-  static Future<void> init() async {
-    await Firebase.initializeApp();
+  static final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  /// Initialize Firebase with options
+  static Future<void> init(FirebaseOptions options) async {
+    await Firebase.initializeApp(options: options);
+  }
+
+  /// Save user role to Firestore (creates document if doesn't exist)
+  static Future<void> saveUserRole(String userId, String role) async {
+    try {
+      await _db.collection('users').doc(userId).set({
+        'role': role,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to save role: $e');
+    }
+  }
+
+  /// Create user profile in Firestore
+  static Future<void> createUserProfile({
+    required String userId,
+    required String email,
+    required String firstName,
+    required String lastName,
+    required String role,
+    String? jobTitle,
+  }) async {
+    try {
+      await _db.collection('users').doc(userId).set({
+        'email': email,
+        'firstName': firstName,
+        'lastName': lastName,
+        'role': role,
+        'jobTitle': jobTitle,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to create user profile: $e');
+    }
   }
 }

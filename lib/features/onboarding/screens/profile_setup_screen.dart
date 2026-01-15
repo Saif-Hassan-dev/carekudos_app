@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../core/providers/onboarding_provider.dart';
+import '../../../core/services/firebase_service.dart';
 
-class ProfileSetupScreen extends StatefulWidget {
+class ProfileSetupScreen extends ConsumerStatefulWidget {
   final VoidCallback onNext;
 
   const ProfileSetupScreen({super.key, required this.onNext});
 
   @override
-  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+  ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _jobTitleController;
   bool _notificationsEnabled = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -35,6 +40,44 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     return _firstNameController.text.isNotEmpty &&
         _lastNameController.text.isNotEmpty &&
         _jobTitleController.text.isNotEmpty;
+  }
+
+  Future<void> _finishSetup() async {
+    if (!_isFormValid()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final onboardingData = ref.read(onboardingProvider);
+
+      // Save complete user profile to Firestore
+      await FirebaseService.createUserProfile(
+        userId: userId,
+        email: onboardingData.email ?? '',
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        role: onboardingData.selectedRole ?? 'care_worker',
+        jobTitle: _jobTitleController.text.trim(),
+      );
+
+      // Clear onboarding state
+      ref.read(onboardingProvider.notifier).reset();
+
+      if (mounted) widget.onNext();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -104,11 +147,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: _isFormValid() ? widget.onNext : null,
+                onPressed: _isLoading ? null : _finishSetup,
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 56),
                 ),
-                child: const Text('Finish Setup'),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Finish Setup'),
               ),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'screens/value_proposition_screen.dart';
 import 'screens/gdpr_explanation_screen.dart';
 import 'screens/role_selection_screen.dart';
@@ -16,7 +17,6 @@ class OnboardingScreen extends StatefulWidget {
 // diff screens in Onboarding!
 class _OnboardingScreenState extends State<OnboardingScreen> {
   late PageController _pageController;
-  int _currentPage = 0;
 
   @override
   void initState() {
@@ -37,11 +37,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  void _previousPage() {
-    _pageController.previousPage(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+  void _completeOnboarding() {
+    // Navigate to feed after onboarding is complete
+    context.go('/feed');
   }
 
   @override
@@ -49,7 +47,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       body: PageView(
         controller: _pageController,
-        onPageChanged: (page) => setState(() => _currentPage = page),
         physics: const NeverScrollableScrollPhysics(),
         children: [
           ValuePropositionScreen(onNext: _nextPage),
@@ -57,7 +54,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           RoleSelectionScreen(onNext: _nextPage),
           RegistrationScreen(onNext: _nextPage),
           GdprTrainingScreen(onNext: _nextPage),
-          ProfileSetupScreen(onNext: _nextPage),
+          ProfileSetupScreen(onNext: _completeOnboarding),
         ],
       ),
     );

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "919426591664",
+    "project_id": "carekudos-1",
+    "storage_bucket": "carekudos-1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:919426591664:android:ac4ee37f1d4d0189b68475",
+        "android_client_info": {
+          "package_name": "com.example.carekudos_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFZg3gJRfVM0no2M6S9o6xlIvdiqCJ_EM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

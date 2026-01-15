@@ -20,15 +20,22 @@ class ValuePropositionScreen extends StatelessWidget {
                   height: 200,
                   width: 200,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Center(child: Text('Hero Image')),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/images/heroplace.jpeg',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
+
+                const SizedBox(height: 32),
                 const SizedBox(height: 32),
                 const Text(
                   'Make your exceptional care visible',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),

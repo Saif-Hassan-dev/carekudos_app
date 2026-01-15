@@ -1,21 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/onboarding_provider.dart';
 
-class RoleSelectionScreen extends StatefulWidget {
+class RoleSelectionScreen extends ConsumerStatefulWidget {
   final VoidCallback onNext;
 
   const RoleSelectionScreen({super.key, required this.onNext});
 
   @override
-  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+  ConsumerState<RoleSelectionScreen> createState() =>
+      _RoleSelectionScreenState();
 }
 
-class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
   String? _selectedRole;
 
   @override
   void initState() {
     super.initState();
     _selectedRole = 'care_worker';
+  }
+
+  void _continueWithRole() {
+    if (_selectedRole != null) {
+      // Save role to onboarding state
+      ref.read(onboardingProvider.notifier).setRole(_selectedRole!);
+      widget.onNext();
+    }
   }
 
   @override
@@ -37,8 +48,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             Column(
               children: [
                 const Text(
-                  'I am a:',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  'I AM A :',
+                  style: TextStyle(
+                    fontSize: 35,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
                 ),
                 const SizedBox(height: 32),
                 ...roles.map(
@@ -56,7 +71,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ],
             ),
             ElevatedButton(
-              onPressed: widget.onNext,
+              onPressed: _continueWithRole,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 56),
               ),
