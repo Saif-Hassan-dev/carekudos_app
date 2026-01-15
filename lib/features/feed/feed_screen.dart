@@ -14,10 +14,6 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void initState() {
     super.initState();
-    print('═══════════════════════════════════');
-    print('FeedScreen initiated');
-    print('User: ${FirebaseAuth.instance.currentUser?.email}');
-    print('═══════════════════════════════════');
   }
 
   @override
@@ -70,27 +66,6 @@ class _FeedScreenState extends State<FeedScreen> {
             .limit(50)
             .snapshots(),
         builder: (context, snapshot) {
-          print('═══════════════════════════════════');
-          print('StreamBuilder Update:');
-          print('Connection: ${snapshot.connectionState}');
-          print('Has Data: ${snapshot.hasData}');
-          print('Has Error: ${snapshot.hasError}');
-
-          if (snapshot.hasData) {
-            print('Documents: ${snapshot.data!.docs.length}');
-            for (var doc in snapshot.data!.docs) {
-              print(
-                '  - ${doc.id}: ${(doc.data() as Map)['content']?.toString().substring(0, 30)}...',
-              );
-            }
-          }
-
-          if (snapshot.hasError) {
-            print('Error: ${snapshot.error}');
-          }
-          print('═══════════════════════════════════');
-
-          // Show loading
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: Column(
@@ -234,7 +209,7 @@ class _FeedScreenState extends State<FeedScreen> {
     if (user == null) return;
 
     try {
-      print('🔨 Creating sample post...');
+      //creating sample post
 
       await FirebaseFirestore.instance.collection('posts').add({
         'authorId': user.uid,
@@ -247,15 +222,12 @@ class _FeedScreenState extends State<FeedScreen> {
         'status': 'approved',
       });
 
-      print('Sample post created!');
-
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Sample post created!')));
       }
     } catch (e) {
-      print('Error creating sample post: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
@@ -391,7 +363,6 @@ class PostCard extends StatelessWidget {
         ).showSnackBar(const SnackBar(content: Text('⭐ Star given!')));
       }
     } catch (e) {
-      print(' Error giving star: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
