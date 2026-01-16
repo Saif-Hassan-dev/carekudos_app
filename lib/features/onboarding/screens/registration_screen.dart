@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/providers/onboarding_provider.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/utils/error_handler.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
@@ -22,6 +24,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   late TextEditingController _orgCodeController;
   final _formKey = GlobalKey<FormState>();
   bool _passwordsMatch = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -56,17 +59,32 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       return;
     }
 
-    // Save registration data to onboarding state first
-    ref
-        .read(onboardingProvider.notifier)
-        .setRegistration(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          orgCode: _orgCodeController.text,
-        );
+    setState(() => _isLoading = true);
 
-    // Move to next step (profile setup) - actual registration happens after profile data collected
-    if (mounted) widget.onNext();
+    try {
+      // Create user with Firebase Auth
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      // Save registration data to onboarding state
+      ref
+          .read(onboardingProvider.notifier)
+          .setRegistration(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            orgCode: _orgCodeController.text,
+          );
+
+      if (mounted) widget.onNext();
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        context.showErrorSnackBar(ErrorHandler.getAuthErrorMessage(e));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
