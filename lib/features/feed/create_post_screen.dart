@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/utils/constants.dart';
+import '../../core/utils/gdpr_checker.dart';
+import '../../core/utils/validators.dart';
+import '../../core/utils/extensions.dart';
+import '../../core/utils/error_handler.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -13,18 +18,11 @@ class CreatePostScreen extends StatefulWidget {
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final _contentController = TextEditingController();
   String _selectedCategory = 'Teamwork';
-  GdprStatus _gdprStatus = GdprStatus.empty;
+  GdprStatus _gdprStatus = GdprStatus.warning;
   List<String> _gdprIssues = [];
   bool _isSubmitting = false;
 
-  final categories = [
-    'Teamwork',
-    'Above & Beyond',
-    'Communication',
-    'Compassion',
-    'Clinical Excellence',
-    'Problem Solving',
-  ];
+  final categories = AppConstants.postCategories;
 
   @override
   void initState() {
@@ -39,92 +37,57 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   void _checkGdpr() {
-    final text = _contentController.text;
-    final issues = <String>[];
+    final result = GdprChecker.check(_contentController.text);
 
-    if (text.isEmpty) {
-      setState(() {
-        _gdprStatus = GdprStatus.empty;
-        _gdprIssues = [];
-      });
-      return;
-    }
-
-    // Basic GDPR checks
-    final namePattern = RegExp(
-      r'\b(Mr|Mrs|Miss|Ms|Dr)\.?\s+[A-Z][a-z]+',
-      caseSensitive: false,
-    );
-    if (namePattern.hasMatch(text)) {
-      issues.add('Contains names (Mr/Mrs/Miss + name)');
-    }
-
-    final roomPattern = RegExp(r'\b(room|bed)\s+\d+', caseSensitive: false);
-    if (roomPattern.hasMatch(text)) {
-      issues.add('Contains room/bed numbers');
-    }
-
-    final fullNamePattern = RegExp(r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\b');
-    if (fullNamePattern.hasMatch(text)) {
-      issues.add('May contain full names');
-    }
-
-    // Determine status
-    if (issues.isEmpty && text.length >= 50) {
-      setState(() {
-        _gdprStatus = GdprStatus.safe;
-        _gdprIssues = [];
-      });
-    } else if (issues.isNotEmpty) {
-      setState(() {
-        _gdprStatus = GdprStatus.unsafe;
-        _gdprIssues = issues;
-      });
-    } else {
-      setState(() {
-        _gdprStatus = GdprStatus.warning;
-        _gdprIssues = ['Minimum 50 characters required'];
-      });
-    }
+    setState(() {
+      _gdprStatus = result.status;
+      _gdprIssues = result.issues;
+    });
   }
 
   Future<void> _submitPost() async {
-    if (_gdprStatus != GdprStatus.safe) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fix GDPR issues first')),
-      );
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Add validation at the start
+    final validationError = Validators.validatePostContent(
+      _contentController.text,
+    );
+    if (validationError != null) {
+      context.showErrorSnackBar(validationError);
       return;
     }
 
+    if (_gdprStatus != GdprStatus.safe) {
+      context.showErrorSnackBar('Please fix GDPR issues first');
+      return;
+    }
     setState(() => _isSubmitting = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser!;
       final userDoc = await FirebaseFirestore.instance
-          .collection('users')
+          .collection(AppConstants.usersCollection)
           .doc(user.uid)
           .get();
 
-      await FirebaseFirestore.instance.collection('posts').add({
-        'authorId': user.uid,
-        'authorName': '${userDoc['firstName']} ${userDoc['lastName']}',
-        'content': _contentController.text,
-        'category': _selectedCategory,
-        'stars': 0,
-        'createdAt': FieldValue.serverTimestamp(),
-        'status': 'pending', // For manager approval if needed
-      });
+      await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .add({
+            'authorId': user.uid,
+            'authorName': '${userDoc['firstName']} ${userDoc['lastName']}',
+            'content': _contentController.text,
+            'category': _selectedCategory,
+            'stars': 0,
+            'createdAt': FieldValue.serverTimestamp(),
+            'status': 'pending', // For manager approval if needed
+          });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Post created successfully!')),
-        );
+        context.showSnackBar('✅ Post created successfully!');
         context.pop();
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      context.showErrorSnackBar(ErrorHandler.getGenericErrorMessage(e));
     } finally {
       setState(() => _isSubmitting = false);
     }
@@ -161,7 +124,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             TextField(
               controller: _contentController,
               maxLines: 8,
-              maxLength: 500,
+              maxLength: AppConstants.maxPostLength,
               decoration: InputDecoration(
                 hintText: 'Share your achievement...',
                 border: OutlineInputBorder(
@@ -176,6 +139,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
             const SizedBox(height: 16),
             _buildGdprIndicator(),
+            if (_gdprStatus == GdprStatus.unsafe) ...[
+              const SizedBox(height: 8),
+              _buildGdprSuggestions(),
+            ],
             const SizedBox(height: 24),
             const Text(
               'Category',
@@ -211,8 +178,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         return Colors.orange;
       case GdprStatus.unsafe:
         return Colors.red;
-      case GdprStatus.empty:
-        return Colors.grey;
     }
   }
 
@@ -220,7 +185,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     IconData icon;
     Color color;
     String message;
-    Color textColor;
 
     switch (_gdprStatus) {
       case GdprStatus.safe:
@@ -237,11 +201,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         icon = Icons.error;
         color = Colors.red;
         message = '🔴 Contains personal data:\n• ' + _gdprIssues.join('\n• ');
-        break;
-      case GdprStatus.empty:
-        icon = Icons.info;
-        color = Colors.grey;
-        message = 'Start typing to check GDPR compliance';
         break;
     }
 
@@ -266,6 +225,41 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       ),
     );
   }
-}
 
-enum GdprStatus { empty, safe, warning, unsafe }
+  Widget _buildGdprSuggestions() {
+    final suggestions = GdprChecker.getSuggestions(_contentController.text);
+
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        border: Border.all(color: Colors.blue),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lightbulb_outline, color: Colors.blue),
+              SizedBox(width: 8),
+              Text(
+                'Suggestions:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...suggestions.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(left: 32, top: 4),
+              child: Text('• $s'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

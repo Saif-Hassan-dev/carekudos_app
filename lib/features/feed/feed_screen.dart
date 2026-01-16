@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/utils/extensions.dart';
+import '../../core/utils/constants.dart';
+import '../../core/utils/error_handler.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -30,7 +34,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CareKudos'),
+        title: const Text(AppConstants.appName),
         actions: [
           // User email display
           Center(
@@ -45,9 +49,7 @@ class _FeedScreenState extends State<FeedScreen> {
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile coming soon!')),
-              );
+              context.showSnackBar('Profile coming soon!');
             },
           ),
           IconButton(
@@ -61,7 +63,7 @@ class _FeedScreenState extends State<FeedScreen> {
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('posts')
+            .collection(AppConstants.postsCollection)
             .orderBy('createdAt', descending: true)
             .limit(50)
             .snapshots(),
@@ -97,7 +99,12 @@ class _FeedScreenState extends State<FeedScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text('${snapshot.error}', textAlign: TextAlign.center),
+
+                    Text(
+                      ErrorHandler.getGenericErrorMessage(snapshot.error),
+                      textAlign: TextAlign.center,
+                    ),
+
                     const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: () => setState(() {}),
@@ -211,27 +218,25 @@ class _FeedScreenState extends State<FeedScreen> {
     try {
       //creating sample post
 
-      await FirebaseFirestore.instance.collection('posts').add({
-        'authorId': user.uid,
-        'authorName': 'Test User',
-        'content':
-            'A team member showed exceptional compassion today by spending extra time with a resident who was feeling anxious.',
-        'category': 'Compassion',
-        'stars': 0,
-        'createdAt': FieldValue.serverTimestamp(),
-        'status': 'approved',
-      });
+      await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .add({
+            'authorId': user.uid,
+            'authorName': 'Test User',
+            'content':
+                'A team member showed exceptional compassion today by spending extra time with a resident who was feeling anxious.',
+            'category': 'Compassion',
+            'stars': 0,
+            'createdAt': FieldValue.serverTimestamp(),
+            'status': 'approved',
+          });
 
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Sample post created!')));
+        context.showSnackBar('✅ Sample post created!');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        context.showErrorSnackBar(ErrorHandler.getGenericErrorMessage(e));
       }
     }
   }
@@ -267,9 +272,7 @@ class PostCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  child: Text(authorName.isNotEmpty ? authorName[0] : '?'),
-                ),
+                CircleAvatar(child: Text(Formatters.getInitials(authorName))),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -280,7 +283,7 @@ class PostCard extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        _formatTime(createdAt),
+                        Formatters.timeAgo(createdAt), // ← Direct call to util
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -298,7 +301,7 @@ class PostCard extends StatelessWidget {
                   icon: const Icon(Icons.star_border),
                   onPressed: () => _giveStar(context),
                 ),
-                Text('$stars stars'),
+                Text('${Formatters.formatStarCount(stars)} stars'),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: () {},
@@ -311,19 +314,6 @@ class PostCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final diff = now.difference(time);
-
-    if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m ago';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
-    } else {
-      return '${diff.inDays}d ago';
-    }
   }
 
   Future<void> _giveStar(BuildContext context) async {
@@ -340,9 +330,7 @@ class PostCard extends StatelessWidget {
 
       if (starDoc.exists) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('You already starred this post')),
-          );
+          context.showSnackBar('You already starred this post');
         }
         return;
       }
@@ -358,15 +346,11 @@ class PostCard extends StatelessWidget {
       });
 
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('⭐ Star given!')));
+        context.showSnackBar(' Star given!');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        context.showErrorSnackBar(ErrorHandler.getGenericErrorMessage(e));
       }
     }
   }

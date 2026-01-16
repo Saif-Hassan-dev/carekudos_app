@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/providers/onboarding_provider.dart';
 import '../../../core/services/firebase_service.dart';
+import '../../../core/utils/validators.dart';
+import '../../../core/utils/error_handler.dart';
+import '../../../core/utils/extensions.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   final VoidCallback onNext;
@@ -17,6 +20,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _jobTitleController;
+  final _formKey = GlobalKey<FormState>();
   bool _notificationsEnabled = true;
   bool _isLoading = false;
 
@@ -36,14 +40,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     super.dispose();
   }
 
-  bool _isFormValid() {
-    return _firstNameController.text.isNotEmpty &&
-        _lastNameController.text.isNotEmpty &&
-        _jobTitleController.text.isNotEmpty;
-  }
-
   Future<void> _finishSetup() async {
-    if (!_isFormValid()) return;
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
@@ -71,9 +69,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       if (mounted) widget.onNext();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        context.showErrorSnackBar(ErrorHandler.getGenericErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -86,80 +82,91 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 40),
-              const Text(
-                'Complete Your Profile',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 32),
-              GestureDetector(
-                onTap: () {
-                  // TODO: Implement photo picker
-                },
-                child: Container(
-                  height: 120,
-                  width: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey[300],
-                  ),
-                  child: const Icon(Icons.camera_alt, size: 40),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                const Text(
+                  'Complete Your Profile',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _firstNameController,
-                decoration: InputDecoration(
-                  labelText: 'First Name',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 32),
+                GestureDetector(
+                  onTap: () {
+                    // TODO: Implement photo picker
+                  },
+                  child: Container(
+                    height: 120,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey[300],
+                    ),
+                    child: const Icon(Icons.camera_alt, size: 40),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _lastNameController,
-                decoration: InputDecoration(
-                  labelText: 'Last Name',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 32),
+                TextFormField(
+                  controller: _firstNameController,
+                  decoration: InputDecoration(
+                    labelText: 'First Name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
+                  validator: Validators.validateName,
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _jobTitleController,
-                decoration: InputDecoration(
-                  labelText: 'Job Title',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _lastNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Last Name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
+                  validator: Validators.validateName,
                 ),
-              ),
-              const SizedBox(height: 24),
-              SwitchListTile(
-                title: const Text('Enable Notifications'),
-                value: _notificationsEnabled,
-                onChanged: (value) =>
-                    setState(() => _notificationsEnabled = value),
-              ),
-              const SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _finishSetup,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 56),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _jobTitleController,
+                  decoration: InputDecoration(
+                    labelText: 'Job Title',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Job title is required';
+                    }
+                    return null;
+                  },
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Finish Setup'),
-              ),
-            ],
+                const SizedBox(height: 24),
+                SwitchListTile(
+                  title: const Text('Enable Notifications'),
+                  value: _notificationsEnabled,
+                  onChanged: (value) =>
+                      setState(() => _notificationsEnabled = value),
+                ),
+                const SizedBox(height: 40),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _finishSetup,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 56),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Finish Setup'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
