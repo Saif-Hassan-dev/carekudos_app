@@ -22,7 +22,11 @@ class WelcomeScreen extends StatelessWidget {
                   color: Colors.blue[100],
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(Icons.favorite, size: 80, color: Colors.blue),
+                child: const Icon(
+                  Icons.health_and_safety,
+                  size: 80,
+                  color: Colors.blue,
+                ),
               ),
 
               const SizedBox(height: 40),

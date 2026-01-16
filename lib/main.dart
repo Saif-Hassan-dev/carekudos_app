@@ -9,7 +9,5 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  print('Firebase initialized successfully');
-
   runApp(const ProviderScope(child: CareKudosApp()));
 }

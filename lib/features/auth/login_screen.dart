@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/validators.dart';
-import '../../core/utils/error_handler.dart';
 import '../../core/utils/extensions.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/utils/error_handler.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
 
+  bool _isLoading = false;
   @override
   void dispose() {
     _emailController.dispose();
@@ -33,8 +34,6 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      print('Calling Firebase signInWithEmailAndPassword...');
-
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -47,12 +46,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         context.showErrorSnackBar(ErrorHandler.getAuthErrorMessage(e));
       }
-    } catch (e) {
-      if (mounted) {
-        context.showErrorSnackBar(ErrorHandler.getGenericErrorMessage(e));
-      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
