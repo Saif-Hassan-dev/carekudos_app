@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/onboarding_provider.dart';
+import '../../../core/widgets/custom_button.dart';
 
 class RoleSelectionScreen extends ConsumerStatefulWidget {
   final VoidCallback onNext;
@@ -70,13 +71,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                 ),
               ],
             ),
-            ElevatedButton(
-              onPressed: _continueWithRole,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 56),
-              ),
-              child: const Text('Continue'),
-            ),
+            CustomButton(text: 'Continue', onPressed: _continueWithRole),
           ],
         ),
       ),

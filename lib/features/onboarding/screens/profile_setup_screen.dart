@@ -6,6 +6,8 @@ import '../../../core/services/firebase_service.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../core/utils/extensions.dart';
+import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/custom_text_field.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   final VoidCallback onNext;
@@ -107,43 +109,36 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                TextFormField(
+
+                CustomTextField(
                   controller: _firstNameController,
-                  decoration: InputDecoration(
-                    labelText: 'First Name',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  labelText: 'First Name',
                   validator: Validators.validateName,
+                  prefixIcon: Icons.person,
                 ),
+
                 const SizedBox(height: 16),
-                TextFormField(
+
+                CustomTextField(
                   controller: _lastNameController,
-                  decoration: InputDecoration(
-                    labelText: 'Last Name',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  labelText: 'Last Name',
                   validator: Validators.validateName,
+                  prefixIcon: Icons.person_outline,
                 ),
+
                 const SizedBox(height: 16),
-                TextFormField(
+                CustomTextField(
                   controller: _jobTitleController,
-                  decoration: InputDecoration(
-                    labelText: 'Job Title',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  labelText: 'Job Title',
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Job title is required';
                     }
                     return null;
                   },
+                  prefixIcon: Icons.work,
                 ),
+
                 const SizedBox(height: 24),
                 SwitchListTile(
                   title: const Text('Enable Notifications'),
@@ -152,18 +147,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       setState(() => _notificationsEnabled = value),
                 ),
                 const SizedBox(height: 40),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _finishSetup,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Finish Setup'),
+                CustomButton(
+                  text: 'Finish Setup',
+                  onPressed: _finishSetup,
+                  isLoading: _isLoading,
                 ),
               ],
             ),

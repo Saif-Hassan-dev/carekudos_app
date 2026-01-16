@@ -5,6 +5,8 @@ import '../../../core/providers/onboarding_provider.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../core/utils/extensions.dart';
+import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/custom_text_field.dart';
 
 class RegistrationScreen extends ConsumerStatefulWidget {
   final VoidCallback onNext;
@@ -101,70 +103,49 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 32),
-                TextFormField(
+
+                CustomTextField(
                   controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  labelText: 'Email',
                   keyboardType: TextInputType.emailAddress,
                   validator: Validators.validateEmail,
+                  prefixIcon: Icons.email,
                 ),
+
                 const SizedBox(height: 16),
-                TextFormField(
+
+                CustomTextField(
                   controller: _passwordController,
-                  onChanged: (_) => _validatePasswords(),
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  labelText: 'Password',
                   obscureText: true,
                   validator: Validators.validatePassword,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _confirmPasswordController,
                   onChanged: (_) => _validatePasswords(),
-                  decoration: InputDecoration(
-                    labelText: 'Confirm Password',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    errorText: !_passwordsMatch
-                        ? 'Passwords do not match'
-                        : null,
-                  ),
+                  prefixIcon: Icons.lock,
+                ),
+
+                const SizedBox(height: 16),
+                CustomTextField(
+                  controller: _confirmPasswordController,
+                  labelText: 'Confirm Password',
                   obscureText: true,
+                  onChanged: (_) => _validatePasswords(),
+                  prefixIcon: Icons.lock,
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
+
+                CustomTextField(
                   controller: _orgCodeController,
-                  decoration: InputDecoration(
-                    labelText: 'Organization Code',
-                    helperText: 'Ask your manager for this',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  labelText: 'Organization Code',
+                  helperText: 'Ask your manager for this',
                   validator: Validators.validateOrgCode,
+                  prefixIcon: Icons.business,
                 ),
+
                 const SizedBox(height: 40),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _register,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Continue'),
+                CustomButton(
+                  text: 'Continue',
+                  onPressed: _register,
+                  isLoading: _isLoading,
                 ),
               ],
             ),

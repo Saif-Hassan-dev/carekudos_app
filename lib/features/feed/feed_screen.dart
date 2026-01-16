@@ -6,6 +6,10 @@ import '../../core/utils/formatters.dart';
 import '../../core/utils/extensions.dart';
 import '../../core/utils/constants.dart';
 import '../../core/utils/error_handler.dart';
+import '../../core/widgets/loading_view.dart';
+import '../../core/widgets/error_view.dart';
+import '../../core/widgets/empty_state_view.dart';
+import '../../core/widgets/custom_button.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -69,50 +73,15 @@ class _FeedScreenState extends State<FeedScreen> {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading feed...'),
-                ],
-              ),
-            );
+            return const LoadingView(message: 'Loading feed...');
           }
 
           // Show error
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error, size: 64, color: Colors.red),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Error Loading Feed',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Text(
-                      ErrorHandler.getGenericErrorMessage(snapshot.error),
-                      textAlign: TextAlign.center,
-                    ),
-
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () => setState(() {}),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
+            return ErrorView(
+              title: 'Error Loading Feed',
+              message: ErrorHandler.getGenericErrorMessage(snapshot.error),
+              onRetry: () => setState(() {}),
             );
           }
 
@@ -170,44 +139,15 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.celebration, size: 120, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-            const Text(
-              'Your feed is empty',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Share your first achievement!\nBe specific and GDPR-safe.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () => context.push('/create-post'),
-              icon: const Icon(Icons.add),
-              label: const Text('Create Your First Post'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: () => _createSamplePost(context),
-              child: const Text('Create Sample Post (Test)'),
-            ),
-          ],
-        ),
-      ),
+    return EmptyStateView(
+      icon: Icons.celebration,
+      title: 'Your feed is empty',
+      message: 'Share your first achievement!\nBe specific and GDPR-safe.',
+      actionText: 'Create Your First Post',
+      actionIcon: Icons.add,
+      onAction: () => context.push('/create-post'),
+      secondaryActionText: 'Create Sample Post (Test)',
+      onSecondaryAction: () => _createSamplePost(context),
     );
   }
 

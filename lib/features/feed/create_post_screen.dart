@@ -7,6 +7,7 @@ import '../../core/utils/gdpr_checker.dart';
 import '../../core/utils/validators.dart';
 import '../../core/utils/extensions.dart';
 import '../../core/utils/error_handler.dart';
+import '../../core/widgets/custom_button.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -99,15 +100,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       appBar: AppBar(
         title: const Text('Share Achievement'),
         actions: [
-          TextButton(
-            onPressed: _isSubmitting ? null : _submitPost,
-            child: _isSubmitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Post'),
+          CustomButton(
+            text: 'Post',
+            onPressed: _submitPost,
+            isLoading: _isSubmitting,
+            isFullWidth: false,
+            backgroundColor: Colors.transparent,
           ),
         ],
       ),

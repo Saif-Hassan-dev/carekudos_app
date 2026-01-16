@@ -7,8 +7,9 @@ import 'app/app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  print('Firebase initialized successfully');
 
   runApp(const ProviderScope(child: CareKudosApp()));
 }

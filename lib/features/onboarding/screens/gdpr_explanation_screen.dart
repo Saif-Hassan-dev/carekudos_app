@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../../../core/widgets/custom_button.dart';
 
 class GdprExplanationScreen extends StatefulWidget {
   final VoidCallback onNext;
@@ -132,12 +133,9 @@ class _GdprExplanationScreenState extends State<GdprExplanationScreen> {
               ],
             ),
 
-            ElevatedButton(
+            CustomButton(
+              text: 'I Understand',
               onPressed: _canContinue ? widget.onNext : null,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 56),
-              ),
-              child: const Text('I Understand'),
             ),
           ],
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/custom_button.dart';
 
 class ValuePropositionScreen extends StatelessWidget {
   final VoidCallback onNext;
@@ -46,13 +47,7 @@ class ValuePropositionScreen extends StatelessWidget {
                 ),
               ],
             ),
-            ElevatedButton(
-              onPressed: onNext,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 56),
-              ),
-              child: const Text('Get Started'),
-            ),
+            CustomButton(text: 'Get Started', onPressed: onNext),
           ],
         ),
       ),

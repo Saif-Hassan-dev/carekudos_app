@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/custom_button.dart';
 
 class GdprTrainingScreen extends StatefulWidget {
   final VoidCallback onNext;
@@ -156,51 +157,31 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    ElevatedButton(
+                    CustomButton(
+                      text: 'Back',
                       onPressed: _currentSlide > 0 && !_isOnQuizSection
                           ? _previousSlide
                           : null,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 16,
-                        ),
-                      ),
-                      child: const Text('Back'),
+                      isFullWidth: false,
                     ),
                     if (!_isOnQuizSection)
-                      ElevatedButton(
-                        onPressed: _nextSlide,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 16,
-                          ),
-                        ),
-                        child: Text(
-                          _currentSlide == slides.length - 1
+                      if (!_isOnQuizSection)
+                        CustomButton(
+                          text: _currentSlide == slides.length - 1
                               ? 'Start Quiz'
                               : 'Next',
+                          onPressed: _nextSlide,
+                          isFullWidth: false,
                         ),
-                      ),
                   ],
                 )
               else
                 Center(
-                  child: ElevatedButton(
+                  child: CustomButton(
+                    text: 'Continue to Next Step',
                     onPressed: widget.onNext,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 48,
-                        vertical: 20,
-                      ),
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text(
-                      'Continue',
-                      style: TextStyle(fontSize: 18),
-                    ),
+                    backgroundColor: Colors.green,
+                    isFullWidth: false,
                   ),
                 ),
             ],
@@ -275,28 +256,20 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
         Row(
           children: [
             Expanded(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.close),
-                label: const Text('Not Safe'),
-                onPressed: () => _answerQuiz(false),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
+              child: CustomButton(
+                text: 'GDPR Safe',
+                icon: Icons.check_circle,
+                onPressed: () => _answerQuiz(true),
+                backgroundColor: Colors.green,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.check),
-                label: const Text('GDPR Safe'),
-                onPressed: () => _answerQuiz(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
+              child: CustomButton(
+                text: 'Contains Personal Data',
+                icon: Icons.warning,
+                onPressed: () => _answerQuiz(false),
+                backgroundColor: Colors.red,
               ),
             ),
           ],

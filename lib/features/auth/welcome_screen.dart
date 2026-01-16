@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/widgets/custom_button.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -44,17 +45,10 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(height: 60),
 
               // Register Button
-              ElevatedButton(
+              CustomButton(
+                text: 'Create Account',
                 onPressed: () => context.go('/onboarding'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 56),
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text(
-                  'Create Account',
-                  style: TextStyle(fontSize: 18),
-                ),
+                backgroundColor: Colors.blue,
               ),
 
               const SizedBox(height: 16),
