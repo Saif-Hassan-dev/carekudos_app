@@ -29,6 +29,8 @@ class FirebaseService {
     required String lastName,
     required String role,
     String? jobTitle,
+    String? organizationId,
+    String? teamId,
   }) async {
     try {
       await _db.collection('users').doc(userId).set({
@@ -39,6 +41,16 @@ class FirebaseService {
         'jobTitle': jobTitle,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        //stars
+        'totalStars': 0,
+        'starsThisMonth': 0,
+        'postCount': 0,
+        'lastPostDate': null,
+
+        //organization & team
+        'organizationId': organizationId,
+        'teamId': teamId,
+        'managerIds': [],
       });
     } catch (e) {
       throw Exception('Failed to create user profile: $e');

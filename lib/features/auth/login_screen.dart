@@ -5,8 +5,6 @@ import '../../core/utils/validators.dart';
 import '../../core/utils/extensions.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../../core/utils/error_handler.dart';
 import '../../core/auth/auth_notifier.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {

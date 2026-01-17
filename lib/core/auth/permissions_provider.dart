@@ -12,6 +12,13 @@ class UserProfile {
   final String role;
   final String? jobTitle;
   final DateTime? createdAt;
+  final int totalStars;
+  final int starsThisMonth;
+  final int postCount;
+  final DateTime? lastPostDate;
+  final String? organizationId;
+  final String? teamId;
+  final List<String> managerIds;
 
   UserProfile({
     required this.uid,
@@ -21,6 +28,13 @@ class UserProfile {
     required this.role,
     this.jobTitle,
     this.createdAt,
+    this.totalStars = 0,
+    this.starsThisMonth = 0,
+    this.postCount = 0,
+    this.lastPostDate,
+    this.organizationId,
+    this.teamId,
+    this.managerIds = const [],
   });
 
   factory UserProfile.fromFirestore(DocumentSnapshot doc) {
@@ -35,6 +49,18 @@ class UserProfile {
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : null,
+
+      totalStars: data['totalStars'] ?? 0,
+      starsThisMonth: data['starsThisMonth'] ?? 0,
+      postCount: data['postCount'] ?? 0,
+      lastPostDate: data['lastPostDate'] != null
+          ? (data['lastPostDate'] as Timestamp).toDate()
+          : null,
+      organizationId: data['organizationId'],
+      teamId: data['teamId'],
+      managerIds: data['managerIds'] != null
+          ? List<String>.from(data['managerIds'])
+          : [],
     );
   }
 

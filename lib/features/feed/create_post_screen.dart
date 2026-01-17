@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/constants.dart';
@@ -11,6 +10,7 @@ import '../../core/widgets/custom_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/auth/permissions_provider.dart';
+import '../post/screens/post_preview_screen.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
@@ -22,6 +22,7 @@ class CreatePostScreen extends ConsumerStatefulWidget {
 class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final _contentController = TextEditingController();
   String _selectedCategory = 'Teamwork';
+  String _selectedVisibility = 'team'; // 'team', 'organization', 'private'
   GdprStatus _gdprStatus = GdprStatus.warning;
   List<String> _gdprIssues = [];
   bool _isSubmitting = false;
@@ -74,6 +75,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     setState(() => _isSubmitting = true);
 
     try {
+      // Check if user needs approval (first 5 posts)
+      final needsApproval = userProfile.postCount < 5;
+
       await FirebaseFirestore.instance
           .collection(AppConstants.postsCollection)
           .add({
@@ -84,6 +88,24 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             'stars': 0,
             'createdAt': FieldValue.serverTimestamp(),
             'status': 'pending', // For manager approval if needed
+            'visibility':
+                _selectedVisibility, // 'team', 'organization', 'private'
+            'teamId': userProfile.teamId,
+            'organizationId': userProfile.organizationId,
+            'isAnonymized': false,
+            'approvalStatus': needsApproval ? 'pending' : 'approved',
+            'approvedBy': null,
+            'approvedAt': null,
+            'needsApproval': needsApproval,
+          });
+
+      // Increment user's post count
+      await FirebaseFirestore.instance
+          .collection(AppConstants.usersCollection)
+          .doc(user.uid)
+          .update({
+            'postCount': FieldValue.increment(1),
+            'lastPostDate': FieldValue.serverTimestamp(),
           });
 
       if (mounted) {
@@ -104,8 +126,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         title: const Text('Share Achievement'),
         actions: [
           CustomButton(
-            text: 'Post',
-            onPressed: _submitPost,
+            text: 'Preview',
+            onPressed: _showPreview,
             isLoading: _isSubmitting,
             isFullWidth: false,
             backgroundColor: Colors.transparent,
@@ -128,6 +150,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
               maxLength: AppConstants.maxPostLength,
               decoration: InputDecoration(
                 hintText: 'Share your achievement...',
+                counterText:
+                    '${_contentController.text.length}/${AppConstants.maxPostLength}',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: _getBorderColor(), width: 2),
@@ -165,7 +189,75 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 );
               }).toList(),
             ),
+            const SizedBox(height: 24),
+            const Text(
+              'Visibility',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Team'),
+                  selected: _selectedVisibility == 'team',
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() => _selectedVisibility = 'team');
+                    }
+                  },
+                ),
+                ChoiceChip(
+                  label: const Text('Organization'),
+                  selected: _selectedVisibility == 'organization',
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() => _selectedVisibility = 'organization');
+                    }
+                  },
+                ),
+                ChoiceChip(
+                  label: const Text('Private'),
+                  selected: _selectedVisibility == 'private',
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() => _selectedVisibility = 'private');
+                    }
+                  },
+                ),
+              ],
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showPreview() {
+    // Validate before showing preview
+    final validationError = Validators.validatePostContent(
+      _contentController.text,
+    );
+    if (validationError != null) {
+      context.showErrorSnackBar(validationError);
+      return;
+    }
+
+    if (_gdprStatus != GdprStatus.safe) {
+      context.showErrorSnackBar('Please fix GDPR issues first');
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PostPreviewScreen(
+          content: _contentController.text,
+          category: _selectedCategory,
+          visibility: _selectedVisibility,
+          isAnonymized: false,
+          onConfirm: _submitPost,
         ),
       ),
     );

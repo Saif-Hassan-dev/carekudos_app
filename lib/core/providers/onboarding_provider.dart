@@ -70,6 +70,14 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     );
   }
 
+  void setFamilyMemberInfo({
+    required String residentName,
+    required String relationship,
+    required String inviteCode,
+  }) {
+    // Store family member info - can expand state if needed
+  }
+
   // Add reset method
   void reset() {
     state = OnboardingState();
@@ -79,6 +87,12 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     state = OnboardingState();
   }
 }
+
+void setFamilyMemberInfo({
+  required String residentName,
+  required String relationship,
+  required String inviteCode,
+}) {}
 
 final onboardingProvider =
     StateNotifierProvider<OnboardingNotifier, OnboardingState>(

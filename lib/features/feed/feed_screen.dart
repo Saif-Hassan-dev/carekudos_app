@@ -50,12 +50,12 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: userProfile.when(
                 data: (profile) => Text(
-                  profile?.firstName ?? user?.email?.split('@')[0] ?? 'User',
+                  profile?.firstName ?? user.email?.split('@')[0] ?? 'User',
                   style: const TextStyle(fontSize: 12),
                 ),
                 loading: () => const SizedBox(width: 40),
                 error: (_, __) => Text(
-                  user?.email?.split('@')[0] ?? 'User',
+                  user.email?.split('@')[0] ?? 'User',
                   style: const TextStyle(fontSize: 12),
                 ),
               ),
