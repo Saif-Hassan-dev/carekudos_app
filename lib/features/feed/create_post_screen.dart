@@ -8,15 +8,18 @@ import '../../core/utils/validators.dart';
 import '../../core/utils/extensions.dart';
 import '../../core/utils/error_handler.dart';
 import '../../core/widgets/custom_button.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/auth/auth_provider.dart';
+import '../../core/auth/permissions_provider.dart';
 
-class CreatePostScreen extends StatefulWidget {
+class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
 
   @override
-  State<CreatePostScreen> createState() => _CreatePostScreenState();
+  ConsumerState<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
-class _CreatePostScreenState extends State<CreatePostScreen> {
+class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final _contentController = TextEditingController();
   String _selectedCategory = 'Teamwork';
   GdprStatus _gdprStatus = GdprStatus.warning;
@@ -47,8 +50,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Future<void> _submitPost() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final user = ref.read(currentUserProvider);
+    final userProfile = ref.read(userProfileProvider).value;
+
+    if (user == null || userProfile == null) {
+      context.showErrorSnackBar('User profile not loaded');
+      return;
+    }
 
     // Add validation at the start
     final validationError = Validators.validatePostContent(
@@ -66,16 +74,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection(AppConstants.usersCollection)
-          .doc(user.uid)
-          .get();
-
       await FirebaseFirestore.instance
           .collection(AppConstants.postsCollection)
           .add({
             'authorId': user.uid,
-            'authorName': '${userDoc['firstName']} ${userDoc['lastName']}',
+            'authorName': userProfile.fullName,
             'content': _contentController.text,
             'category': _selectedCategory,
             'stars': 0,

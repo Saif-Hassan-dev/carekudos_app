@@ -9,16 +9,19 @@ import '../../core/utils/error_handler.dart';
 import '../../core/widgets/loading_view.dart';
 import '../../core/widgets/error_view.dart';
 import '../../core/widgets/empty_state_view.dart';
-import '../../core/widgets/custom_button.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/auth/auth_provider.dart';
+import '../../core/auth/auth_notifier.dart';
+import '../../core/auth/permissions_provider.dart';
 
-class FeedScreen extends StatefulWidget {
+class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
 
   @override
-  State<FeedScreen> createState() => _FeedScreenState();
+  ConsumerState<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _FeedScreenState extends State<FeedScreen> {
+class _FeedScreenState extends ConsumerState<FeedScreen> {
   @override
   void initState() {
     super.initState();
@@ -26,7 +29,8 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = ref.watch(currentUserProvider);
+    final userProfile = ref.watch(userProfileProvider);
 
     if (user == null) {
       // Shouldn't happen due to router redirect, but safety check
@@ -44,12 +48,20 @@ class _FeedScreenState extends State<FeedScreen> {
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                user.email?.split('@')[0] ?? 'User',
-                style: const TextStyle(fontSize: 12),
+              child: userProfile.when(
+                data: (profile) => Text(
+                  profile?.firstName ?? user?.email?.split('@')[0] ?? 'User',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                loading: () => const SizedBox(width: 40),
+                error: (_, __) => Text(
+                  user?.email?.split('@')[0] ?? 'User',
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
             ),
           ),
+
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
@@ -59,7 +71,7 @@ class _FeedScreenState extends State<FeedScreen> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              await FirebaseAuth.instance.signOut();
+              await ref.read(authNotifierProvider.notifier).logout();
               if (context.mounted) context.go('/welcome');
             },
           ),

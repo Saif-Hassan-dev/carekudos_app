@@ -7,6 +7,7 @@ import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/utils/error_handler.dart';
+import '../../core/auth/auth_notifier.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -20,7 +21,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  bool _isLoading = false;
   @override
   void dispose() {
     _emailController.dispose();
@@ -31,24 +31,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    final success = await ref
+        .read(authNotifierProvider.notifier)
+        .login(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
 
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      if (mounted) {
+    if (mounted) {
+      if (success) {
         context.go('/feed');
-      }
-    } on FirebaseAuthException catch (e) {
-      if (mounted) {
-        context.showErrorSnackBar(ErrorHandler.getAuthErrorMessage(e));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+      } else {
+        final authState = ref.read(authNotifierProvider);
+        if (authState.error != null) {
+          context.showErrorSnackBar(authState.error!);
+        }
       }
     }
   }
@@ -92,10 +89,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                CustomButton(
-                  text: 'Login',
-                  onPressed: _login,
-                  isLoading: _isLoading,
+                Consumer(
+                  builder: (context, ref, _) {
+                    final authState = ref.watch(authNotifierProvider);
+                    return CustomButton(
+                      text: 'Login',
+                      onPressed: authState.isLoading ? null : _login,
+                      isLoading: authState.isLoading,
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 16),
