@@ -67,7 +67,8 @@ class UserProfile {
   String get fullName => '$firstName $lastName';
 
   bool get isManager => role == 'manager';
-  bool get isStaff => role == 'care_worker' || role == 'senior_carer';
+  bool get isStaff =>
+      role == 'care_worker' || role == 'senior_carer' || role == 'manager';
   bool get isSeniorCarer => role == 'senior_carer';
   bool get isCareWorker => role == 'care_worker';
   bool get isFamilyMember => role == 'family_member';

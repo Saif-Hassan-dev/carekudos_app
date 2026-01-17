@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/auth/auth_notifier.dart';
 import '../../core/auth/permissions_provider.dart';
+import '../stars/providers/star_provider.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -126,6 +127,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
                     return PostCard(
                       postId: doc.id,
+                      authorId: data['authorId'] ?? '', // ADD THIS
                       authorName: data['authorName'] ?? 'Anonymous',
                       content: data['content'] ?? '',
                       category: data['category'] ?? 'General',
@@ -194,9 +196,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   }
 }
 
-// PostCard widget (same as before)
-class PostCard extends StatelessWidget {
+// PostCard widget
+class PostCard extends ConsumerStatefulWidget {
   final String postId;
+  final String authorId;
   final String authorName;
   final String content;
   final String category;
@@ -206,6 +209,7 @@ class PostCard extends StatelessWidget {
   const PostCard({
     super.key,
     required this.postId,
+    required this.authorId,
     required this.authorName,
     required this.content,
     required this.category,
@@ -214,7 +218,44 @@ class PostCard extends StatelessWidget {
   });
 
   @override
+  ConsumerState<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends ConsumerState<PostCard> {
+  bool _hasGivenStar = false;
+  bool _isGivingStar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfStarred();
+  }
+
+  Future<void> _checkIfStarred() async {
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection(AppConstants.postsCollection)
+        .doc(widget.postId)
+        .get();
+
+    if (doc.exists) {
+      final data = doc.data()!;
+      final starredBy = data['starredBy'] as List<dynamic>?;
+      if (mounted) {
+        setState(() {
+          _hasGivenStar = starredBy?.contains(currentUser.uid) ?? false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final canGiveStars = ref.watch(canGiveStarsProvider);
+    final multiplier = ref.watch(starMultiplierProvider);
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Padding(
@@ -224,36 +265,46 @@ class PostCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(child: Text(Formatters.getInitials(authorName))),
+                CircleAvatar(
+                  child: Text(Formatters.getInitials(widget.authorName)),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        authorName,
+                        widget.authorName,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        Formatters.timeAgo(createdAt), // ← Direct call to util
+                        Formatters.timeAgo(widget.createdAt),
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
-                Chip(label: Text(category), backgroundColor: Colors.blue[100]),
+                Chip(
+                  label: Text(widget.category),
+                  backgroundColor: Colors.blue[100],
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(content),
+            Text(widget.content),
             const SizedBox(height: 12),
             Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.star_border),
-                  onPressed: () => _giveStar(context),
+                  icon: Icon(
+                    _hasGivenStar ? Icons.star : Icons.star_border,
+                    color: _hasGivenStar ? Colors.amber : null,
+                  ),
+                  onPressed: (!canGiveStars || _hasGivenStar || _isGivingStar)
+                      ? null
+                      : () => _giveStar(multiplier),
                 ),
-                Text('${Formatters.formatStarCount(stars)} stars'),
+                Text('${Formatters.formatStarCount(widget.stars)} stars'),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: () {},
@@ -268,41 +319,43 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  Future<void> _giveStar(BuildContext context) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  Future<void> _giveStar(int multiplier) async {
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null) return;
+
+    setState(() => _isGivingStar = true);
 
     try {
-      final starDoc = await FirebaseFirestore.instance
-          .collection('posts')
-          .doc(postId)
-          .collection('starredBy')
-          .doc(user.uid)
-          .get();
+      final starService = ref.read(starPostProvider);
 
-      if (starDoc.exists) {
-        if (context.mounted) {
-          context.showSnackBar('You already starred this post');
-        }
-        return;
-      }
+      // Use the StarService from provider
+      await starService.giveStarToPost(
+        postId: widget.postId,
+        postAuthorId: widget.authorId,
+        multiplier: multiplier.toDouble(),
+      );
 
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final postRef = FirebaseFirestore.instance
-            .collection('posts')
-            .doc(postId);
-        final starRef = postRef.collection('starredBy').doc(user.uid);
+      // Update starredBy array
+      await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .doc(widget.postId)
+          .update({
+            'starredBy': FieldValue.arrayUnion([currentUser.uid]),
+          });
 
-        transaction.update(postRef, {'stars': FieldValue.increment(1)});
-        transaction.set(starRef, {'timestamp': FieldValue.serverTimestamp()});
-      });
-
-      if (context.mounted) {
-        context.showSnackBar(' Star given!');
+      if (mounted) {
+        setState(() => _hasGivenStar = true);
+        context.showSnackBar(
+          '⭐ Gave $multiplier star${multiplier > 1 ? 's' : ''}!',
+        );
       }
     } catch (e) {
-      if (context.mounted) {
-        context.showErrorSnackBar(ErrorHandler.getGenericErrorMessage(e));
+      if (mounted) {
+        context.showErrorSnackBar('Failed to give star: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGivingStar = false);
       }
     }
   }
