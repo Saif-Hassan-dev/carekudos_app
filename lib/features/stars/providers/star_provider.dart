@@ -30,4 +30,27 @@ class StarService {
 
     await batch.commit();
   }
+
+  Future<void> removeStarFromPost({
+    required String postId,
+    required String postAuthorId,
+    required double multiplier,
+  }) async {
+    final batch = FirebaseFirestore.instance.batch();
+
+    final postRef = FirebaseFirestore.instance
+        .collection(AppConstants.postsCollection)
+        .doc(postId);
+    batch.update(postRef, {'stars': FieldValue.increment(-multiplier.toInt())});
+
+    final userRef = FirebaseFirestore.instance
+        .collection(AppConstants.usersCollection)
+        .doc(postAuthorId);
+    batch.update(userRef, {
+      'totalStars': FieldValue.increment(-multiplier.toInt()),
+      'starsThisMonth': FieldValue.increment(-multiplier.toInt()),
+    });
+
+    await batch.commit();
+  }
 }

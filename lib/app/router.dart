@@ -8,6 +8,7 @@ import '../features/onboarding/onboarding_screen.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/feed/create_post_screen.dart';
 import '../core/auth/auth_provider.dart';
+import '../core/auth/permissions_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateStream = ref.watch(authStateProvider.stream);
@@ -15,17 +16,25 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/welcome',
     refreshListenable: GoRouterRefreshStream(authStateStream),
-    redirect: (context, state) {
-      final authState = ref.read(authStateProvider);
-      final isLoggedIn = authState.value != null;
+    redirect: (context, state) async {
+      final user = ref.read(authStateProvider).value;
+      final isLoggedIn = user != null;
 
-      if (isLoggedIn &&
-          (state.matchedLocation == '/welcome' ||
-              state.matchedLocation == '/login' ||
-              state.matchedLocation == '/onboarding')) {
-        return '/feed';
+      if (isLoggedIn) {
+        // Check if profile exists in Firestore
+        final profile = await ref.read(userProfileProvider.future);
+        final hasProfile = profile != null && profile.firstName.isNotEmpty;
+
+        if (!hasProfile && state.matchedLocation != '/onboarding') {
+          return '/onboarding'; // Force onboarding completion
+        }
+
+        if (hasProfile &&
+            (state.matchedLocation == '/welcome' ||
+                state.matchedLocation == '/login')) {
+          return '/feed';
+        }
       }
-
       return null;
     },
     routes: [

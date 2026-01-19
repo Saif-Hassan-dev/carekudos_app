@@ -33,6 +33,9 @@ class AppConstants {
   static const Duration morningReminderTime = Duration(hours: 7, minutes: 30);
   static const Duration afternoonReminderTime = Duration(hours: 16, minutes: 0);
 
+  //tutorial
+  static const String feedTutorialSeenKey = 'feed_tutorial_seen';
+
   // Firestore Collections
   static const String usersCollection = 'users';
   static const String postsCollection = 'posts';

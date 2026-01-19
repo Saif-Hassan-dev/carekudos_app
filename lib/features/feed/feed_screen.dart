@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/services/firebase_service.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/extensions.dart';
@@ -14,6 +15,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/auth/auth_notifier.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../stars/providers/star_provider.dart';
+import '../../core/widgets/tutorial_overlay.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -41,113 +43,148 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppConstants.appName),
-        actions: [
-          // User email display
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: userProfile.when(
-                data: (profile) => Text(
-                  profile?.firstName ?? user.email?.split('@')[0] ?? 'User',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                loading: () => const SizedBox(width: 40),
-                error: (_, __) => Text(
-                  user.email?.split('@')[0] ?? 'User',
-                  style: const TextStyle(fontSize: 12),
+    final showTutorial = userProfile.when(
+      data: (profile) => !(profile?.hasSeenFeedTutorial ?? true),
+      loading: () => false,
+      error: (_, __) => false,
+    );
+
+    //one time tutorial overlay for feed screen
+    return TutorialOverlay(
+      showTutorial: showTutorial,
+      onComplete: () async {
+        // Mark tutorial as seen in Firestore
+        await FirebaseService.markTutorialSeen(user.uid, 'hasSeenFeedTutorial');
+      },
+      steps: const [
+        TutorialStep(
+          icon: Icons.add_circle_outline,
+          title: 'Tap + to share an achievement',
+          description:
+              'Celebrate your colleagues\' great work by sharing what they did.',
+        ),
+        TutorialStep(
+          icon: Icons.security,
+          title: 'Be specific and GDPR-safe',
+          description:
+              'Don\'t use names or identifying details. Focus on the action, not the person.',
+        ),
+        TutorialStep(
+          icon: Icons.star,
+          title: 'Colleagues can give you stars',
+          description:
+              'When others appreciate your post, they\'ll give you stars. Collect stars to level up!',
+        ),
+      ],
+
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(AppConstants.appName),
+          actions: [
+            // User email display
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: userProfile.when(
+                  data: (profile) => Text(
+                    profile?.firstName ?? user.email?.split('@')[0] ?? 'User',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  loading: () => const SizedBox(width: 40),
+                  error: (_, __) => Text(
+                    user.email?.split('@')[0] ?? 'User',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
               ),
             ),
-          ),
 
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-              context.showSnackBar('Profile coming soon!');
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authNotifierProvider.notifier).logout();
-              if (context.mounted) context.go('/welcome');
-            },
-          ),
-        ],
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection(AppConstants.postsCollection)
-            .orderBy('createdAt', descending: true)
-            .limit(50)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const LoadingView(message: 'Loading feed...');
-          }
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: () {
+                context.showSnackBar('Profile coming soon!');
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () async {
+                await ref.read(authNotifierProvider.notifier).logout();
+                if (context.mounted) context.go('/welcome');
+              },
+            ),
+          ],
+        ),
+        body: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection(AppConstants.postsCollection)
+              .orderBy('createdAt', descending: true)
+              .limit(50)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const LoadingView(message: 'Loading feed...');
+            }
 
-          // Show error
-          if (snapshot.hasError) {
-            return ErrorView(
-              title: 'Error Loading Feed',
-              message: ErrorHandler.getGenericErrorMessage(snapshot.error),
-              onRetry: () => setState(() {}),
+            // Show error
+            if (snapshot.hasError) {
+              return ErrorView(
+                title: 'Error Loading Feed',
+                message: ErrorHandler.getGenericErrorMessage(snapshot.error),
+                onRetry: () => setState(() {}),
+              );
+            }
+
+            // Show empty state
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return _buildEmptyState(context);
+            }
+
+            // Show posts
+            return Column(
+              children: [
+                // Post count indicator
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  color: Colors.blue[50],
+                  child: Text(
+                    '${snapshot.data!.docs.length} posts in feed',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemCount: snapshot.data!.docs.length,
+                    itemBuilder: (context, index) {
+                      final doc = snapshot.data!.docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+
+                      return PostCard(
+                        postId: doc.id,
+                        authorId: data['authorId'] ?? '', // ADD THIS
+                        authorName: data['authorName'] ?? 'Anonymous',
+                        content: data['content'] ?? '',
+                        category: data['category'] ?? 'General',
+                        stars: data['stars'] ?? 0,
+                        createdAt: data['createdAt'] != null
+                            ? (data['createdAt'] as Timestamp).toDate()
+                            : DateTime.now(),
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
-          }
-
-          // Show empty state
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return _buildEmptyState(context);
-          }
-
-          // Show posts
-          return Column(
-            children: [
-              // Post count indicator
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                color: Colors.blue[50],
-                child: Text(
-                  '${snapshot.data!.docs.length} posts in feed',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 80),
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    final doc = snapshot.data!.docs[index];
-                    final data = doc.data() as Map<String, dynamic>;
-
-                    return PostCard(
-                      postId: doc.id,
-                      authorId: data['authorId'] ?? '', // ADD THIS
-                      authorName: data['authorName'] ?? 'Anonymous',
-                      content: data['content'] ?? '',
-                      category: data['category'] ?? 'General',
-                      stars: data['stars'] ?? 0,
-                      createdAt: data['createdAt'] != null
-                          ? (data['createdAt'] as Timestamp).toDate()
-                          : DateTime.now(),
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/create-post'),
-        icon: const Icon(Icons.add),
-        label: const Text('Share Achievement'),
-        backgroundColor: Colors.blue,
+          },
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => context.push('/create-post'),
+          icon: const Icon(Icons.add),
+          label: const Text('Share Achievement'),
+          backgroundColor: Colors.blue,
+        ),
       ),
     );
   }
@@ -300,9 +337,11 @@ class _PostCardState extends ConsumerState<PostCard> {
                     _hasGivenStar ? Icons.star : Icons.star_border,
                     color: _hasGivenStar ? Colors.amber : null,
                   ),
-                  onPressed: (!canGiveStars || _hasGivenStar || _isGivingStar)
+                  onPressed: (!canGiveStars || _isGivingStar)
                       ? null
-                      : () => _giveStar(multiplier),
+                      : () => _hasGivenStar
+                            ? _removeStar(multiplier)
+                            : _giveStar(multiplier),
                 ),
                 Text('${Formatters.formatStarCount(widget.stars)} stars'),
                 const Spacer(),
@@ -352,6 +391,43 @@ class _PostCardState extends ConsumerState<PostCard> {
     } catch (e) {
       if (mounted) {
         context.showErrorSnackBar('Failed to give star: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGivingStar = false);
+      }
+    }
+  }
+
+  Future<void> _removeStar(int multiplier) async {
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null) return;
+
+    setState(() => _isGivingStar = true);
+
+    try {
+      final starService = ref.read(starPostProvider);
+
+      await starService.removeStarFromPost(
+        postId: widget.postId,
+        postAuthorId: widget.authorId,
+        multiplier: multiplier.toDouble(),
+      );
+
+      await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .doc(widget.postId)
+          .update({
+            'starredBy': FieldValue.arrayRemove([currentUser.uid]),
+          });
+
+      if (mounted) {
+        setState(() => _hasGivenStar = false);
+        context.showSnackBar('Star removed');
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showErrorSnackBar('Failed to remove star: $e');
       }
     } finally {
       if (mounted) {
