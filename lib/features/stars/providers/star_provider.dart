@@ -31,6 +31,7 @@ class StarService {
     await batch.commit();
   }
 
+  // Provider to remove stars from a post
   Future<void> removeStarFromPost({
     required String postId,
     required String postAuthorId,
