@@ -44,6 +44,8 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     super.dispose();
   }
 
+  // for password match validation
+
   void _validatePasswords() {
     setState(() {
       _passwordsMatch =
