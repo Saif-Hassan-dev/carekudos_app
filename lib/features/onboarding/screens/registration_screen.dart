@@ -27,6 +27,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   bool _isLoading = false;
 
   @override
+  // initialize controllers
   void initState() {
     super.initState();
     _emailController = TextEditingController();
