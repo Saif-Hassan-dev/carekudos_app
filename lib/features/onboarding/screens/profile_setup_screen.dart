@@ -112,7 +112,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
                 CustomTextField(
                   controller: _firstNameController,
-                  labelText: 'First Name',
+                  label: 'First Name',
                   validator: Validators.validateName,
                   prefixIcon: Icons.person,
                 ),
@@ -121,7 +121,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
                 CustomTextField(
                   controller: _lastNameController,
-                  labelText: 'Last Name',
+                  label: 'Last Name',
                   validator: Validators.validateName,
                   prefixIcon: Icons.person_outline,
                 ),
@@ -129,7 +129,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 const SizedBox(height: 16),
                 CustomTextField(
                   controller: _jobTitleController,
-                  labelText: 'Job Title',
+                  label: 'Job Title',
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Job title is required';

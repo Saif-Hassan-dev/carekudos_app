@@ -156,7 +156,7 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
                 _buildNavigationButtons()
               else
                 AppButton.primary(
-                  label: 'Continue',
+                  text: 'Continue',
                   onPressed: widget.onNext,
                   isFullWidth: true,
                 ),
@@ -197,14 +197,14 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
         if (_currentSlide > 0)
           Expanded(
             child: AppButton.secondary(
-              label: 'Back',
+              text: 'Back',
               onPressed: _previousSlide,
             ),
           ),
         if (_currentSlide > 0) AppSpacing.horizontalGap12,
         Expanded(
           child: AppButton.primary(
-            label: _currentSlide == slides.length - 1 ? 'Start Quiz' : 'Next',
+            text: _currentSlide == slides.length - 1 ? 'Start Quiz' : 'Next',
             onPressed: _nextSlide,
           ),
         ),
@@ -338,17 +338,14 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
             children: [
               Expanded(
                 child: QuizActionButton(
-                  label: 'Yes',
-                  icon: Icons.check,
+                  text: 'Yes',
                   onPressed: () => _answerQuiz(true),
                 ),
               ),
               AppSpacing.horizontalGap12,
               Expanded(
                 child: QuizActionButton(
-                  label: 'No',
-                  icon: Icons.close,
-                  isSecondary: true,
+                  text: 'No',
                   onPressed: () => _answerQuiz(false),
                 ),
               ),

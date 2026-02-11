@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../theme/theme.dart';
-import 'custom_text_field.dart';
 
 /// Selection card used in role selection
 class SelectionCard extends StatelessWidget {

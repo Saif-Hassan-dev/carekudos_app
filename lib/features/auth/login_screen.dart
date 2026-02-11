@@ -71,7 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 CustomTextField(
                   controller: _emailController,
-                  labelText: 'Email',
+                  label: 'Email',
                   keyboardType: TextInputType.emailAddress,
                   validator: Validators.validateEmail,
                   prefixIcon: Icons.email,
@@ -80,7 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 CustomTextField(
                   controller: _passwordController,
-                  labelText: 'Password',
+                  label: 'Password',
                   obscureText: true,
                   validator: Validators.validatePassword,
                   prefixIcon: Icons.lock,

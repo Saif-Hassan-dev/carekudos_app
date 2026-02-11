@@ -9,6 +9,11 @@ import '../features/feed/feed_screen.dart';
 import '../features/feed/create_post_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/settings/account_settings_screen.dart';
+import '../features/settings/privacy_gdpr_screen.dart';
+import '../features/settings/settings_notifications_screen.dart';
+import '../features/settings/help_support_screen.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../core/auth/auth_provider.dart';
 import '../core/auth/permissions_provider.dart';
 
@@ -61,6 +66,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/account',
+        builder: (context, state) => const AccountSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/privacy',
+        builder: (context, state) => const PrivacyGdprScreen(),
+      ),
+      GoRoute(
+        path: '/settings/notifications',
+        builder: (context, state) => const SettingsNotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/help',
+        builder: (context, state) => const HelpSupportScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
     ],
   );

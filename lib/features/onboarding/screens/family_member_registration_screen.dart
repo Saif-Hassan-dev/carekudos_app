@@ -40,21 +40,21 @@ class _FamilyMemberRegistrationScreenState
             // Resident Name
             CustomTextField(
               controller: _residentNameController,
-              labelText: 'Resident\'s Name',
+              label: 'Resident\'s Name',
               helperText: 'Who are you visiting?',
             ),
 
             // Relationship
             CustomTextField(
               controller: _relationshipController,
-              labelText: 'Your Relationship',
+              label: 'Your Relationship',
               helperText: 'e.g., Daughter, Son, Spouse',
             ),
 
             // Manager Invite Code
             CustomTextField(
               controller: _inviteCodeController,
-              labelText: 'Manager Invite Code',
+              label: 'Manager Invite Code',
               helperText: 'Ask your care manager for this code',
             ),
 

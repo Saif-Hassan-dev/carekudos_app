@@ -112,7 +112,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
               ),
               AppSpacing.verticalGap24,
               AppButton.primary(
-                label: 'Continue',
+                text: 'Continue',
                 onPressed: _selectedRole != null ? _continueWithRole : null,
                 isFullWidth: true,
               ),

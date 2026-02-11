@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/theme.dart';
-import '../../core/widgets/custom_button.dart';
-import '../../core/widgets/custom_text_field.dart';
-import '../../core/widgets/cards.dart';
+import '../../../core/theme/theme.dart';
+import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/custom_text_field.dart';
+import '../../../core/widgets/cards.dart';
 
 /// Bottom sheet for giving a star to a colleague
 class GiveStarBottomSheet extends StatefulWidget {
@@ -265,11 +265,11 @@ class _GiveStarBottomSheetState extends State<GiveStarBottomSheet> {
 
                 // Submit button
                 AppButton.primary(
-                  label: 'Give Star${_starCount > 1 ? 's' : ''}',
+                  text: 'Give Star${_starCount > 1 ? 's' : ''}',
                   onPressed: _submit,
                   isLoading: _isSubmitting,
                   isFullWidth: true,
-                  icon: Icons.star,
+                  leadingIcon: Icons.star,
                 ),
                 AppSpacing.verticalGap16,
               ],

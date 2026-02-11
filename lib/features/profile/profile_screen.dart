@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/auth/auth_notifier.dart';
+import '../../core/auth/permissions_provider.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/cards.dart';
 import '../../core/widgets/custom_button.dart';
@@ -42,8 +43,9 @@ class ProfileScreen extends ConsumerWidget {
               Text('Error loading profile', style: AppTypography.bodyB3),
               AppSpacing.verticalGap8,
               AppButton.secondary(
-                label: 'Retry',
+                text: 'Retry',
                 onPressed: () => ref.invalidate(userProfileProvider),
+                isFullWidth: false,
               ),
             ],
           ),
@@ -62,9 +64,9 @@ class ProfileScreen extends ConsumerWidget {
                   name: profile.fullName,
                   email: user?.email ?? '',
                   role: profile.role,
-                  avatarUrl: profile.avatarUrl ?? '',
-                  starsReceived: profile.starsReceived,
-                  starsGiven: profile.starsGiven,
+                  avatarUrl: '',
+                  starsReceived: profile.totalStars,
+                  starsGiven: profile.starsThisMonth,
                 ),
                 AppSpacing.verticalGap24,
 
@@ -87,7 +89,7 @@ class ProfileScreen extends ConsumerWidget {
                     AppSpacing.horizontalGap12,
                     Expanded(
                       child: StatCard(
-                        value: profile.starsReceived.toString(),
+                        value: profile.totalStars.toString(),
                         label: 'Stars Received',
                         icon: Icons.star,
                         color: AppColors.secondary,
@@ -100,7 +102,7 @@ class ProfileScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: StatCard(
-                        value: profile.starsGiven.toString(),
+                        value: profile.starsThisMonth.toString(),
                         label: 'Stars Given',
                         icon: Icons.star_border,
                         color: AppColors.tertiary,
@@ -109,7 +111,7 @@ class ProfileScreen extends ConsumerWidget {
                     AppSpacing.horizontalGap12,
                     Expanded(
                       child: StatCard(
-                        value: _getLevelName(profile.level),
+                        value: _getLevelName(profile.totalStars),
                         label: 'Level',
                         icon: Icons.emoji_events_outlined,
                         color: AppColors.success,
@@ -139,7 +141,7 @@ class ProfileScreen extends ConsumerWidget {
 
                 // Logout button
                 AppButton.text(
-                  label: 'Sign Out',
+                  text: 'Sign Out',
                   onPressed: () async {
                     await ref.read(authNotifierProvider.notifier).logout();
                     if (context.mounted) context.go('/welcome');

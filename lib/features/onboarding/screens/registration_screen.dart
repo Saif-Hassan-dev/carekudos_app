@@ -197,7 +197,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 AppSpacing.verticalGap40,
 
                 AppButton.primary(
-                  label: 'Continue',
+                  text: 'Continue',
                   onPressed: _allFieldsFilled && !_hasErrors ? _register : null,
                   isLoading: _isLoading,
                   isFullWidth: true,

@@ -75,7 +75,7 @@ class ValuePropositionScreen extends StatelessWidget {
               const Spacer(flex: 2),
               // Get Started Button
               AppButton.primary(
-                label: 'Get Started',
+                text: 'Get Started',
                 onPressed: onNext,
                 isFullWidth: true,
               ),

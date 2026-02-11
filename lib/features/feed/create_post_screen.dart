@@ -136,7 +136,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           Padding(
             padding: AppSpacing.horizontal16,
             child: AppButton.text(
-              label: 'Preview',
+              text: 'Preview',
               onPressed: _gdprStatus == GdprStatus.safe ? _showPreview : null,
             ),
           ),
@@ -248,7 +248,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             ),
             AppSpacing.verticalGap32,
             AppButton.primary(
-              label: 'Post Achievement',
+              text: 'Post Achievement',
               onPressed: _gdprStatus == GdprStatus.safe ? _submitPost : null,
               isLoading: _isSubmitting,
               isFullWidth: true,

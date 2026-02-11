@@ -10,7 +10,7 @@ class AppTheme {
   AppTheme._();
 
   /// Light theme
-  static ThemeData get light {
+  static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
@@ -51,7 +51,7 @@ class AppTheme {
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -74,7 +74,7 @@ class AppTheme {
           ),
           shape: AppRadius.shapeLg,
           elevation: 0,
-          minimumSize: const Size(double.infinity, 56),
+          minimumSize: const Size(0, 56),
         ),
       ),
       
@@ -88,7 +88,7 @@ class AppTheme {
           ),
           shape: AppRadius.shapeLg,
           side: const BorderSide(color: AppColors.primary, width: 1.5),
-          minimumSize: const Size(double.infinity, 56),
+          minimumSize: const Size(0, 56),
         ),
       ),
       
@@ -180,7 +180,7 @@ class AppTheme {
         dragHandleSize: Size(40, 4),
       ),
       
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: AppColors.surface,
         shape: AppRadius.shapeXl,
         titleTextStyle: AppTypography.headingH3,
@@ -227,5 +227,5 @@ class AppTheme {
   }
 
   /// Dark theme (placeholder)
-  static ThemeData get dark => light;
+  static ThemeData get dark => lightTheme;
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/firebase_service.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +8,6 @@ import '../../core/utils/constants.dart';
 import '../../core/utils/error_handler.dart';
 import '../../core/widgets/loading_view.dart';
 import '../../core/widgets/error_view.dart';
-import '../../core/widgets/empty_state_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/auth/auth_notifier.dart';
@@ -41,11 +39,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       // Create tab - go to create post
       context.push('/create-post');
     } else if (index == 2) {
-      // Alerts - show notifications (to be implemented)
-      context.showSnackBar('Notifications coming soon!');
+      // Alerts - show notifications
+      context.push('/notifications');
     } else if (index == 3) {
       // Profile
-      context.showSnackBar('Profile coming soon!');
+      context.push('/profile');
     } else {
       setState(() => _currentNavIndex = index);
     }

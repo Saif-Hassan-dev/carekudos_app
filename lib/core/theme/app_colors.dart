@@ -182,6 +182,7 @@ abstract class AppColors {
   static const Color divider = neutral200;
   static const Color border = neutral300;
   static const Color borderLight = neutral200;
+  static const Color cardBackground = neutral0;
 
   // ============================================
   // CATEGORY TAG COLORS

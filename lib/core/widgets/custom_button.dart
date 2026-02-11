@@ -83,24 +83,31 @@ class AppButton extends StatelessWidget {
   }
 
   Widget _buildPrimaryButton() {
-    return ElevatedButton(
+    final button = ElevatedButton(
       onPressed: isLoading ? null : onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.neutral0,
         disabledBackgroundColor: AppColors.neutral300,
         disabledForegroundColor: AppColors.neutral500,
-        minimumSize: isFullWidth ? const Size(double.infinity, 56) : null,
+        minimumSize: const Size(0, 56),
         padding: _getPadding(),
         shape: AppRadius.shapeLg,
         elevation: 0,
       ),
       child: _buildContent(AppColors.neutral0),
     );
+    if (!isFullWidth) return button;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite ? constraints.maxWidth : null;
+        return SizedBox(width: width, child: button);
+      },
+    );
   }
 
   Widget _buildSecondaryButton() {
-    return OutlinedButton(
+    final button = OutlinedButton(
       onPressed: isLoading ? null : onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.primary,
@@ -108,35 +115,56 @@ class AppButton extends StatelessWidget {
           color: onPressed == null ? AppColors.neutral300 : AppColors.primary,
           width: 1.5,
         ),
-        minimumSize: isFullWidth ? const Size(double.infinity, 56) : null,
+        minimumSize: const Size(0, 56),
         padding: _getPadding(),
         shape: AppRadius.shapeLg,
       ),
       child: _buildContent(AppColors.primary),
     );
+    if (!isFullWidth) return button;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite ? constraints.maxWidth : null;
+        return SizedBox(width: width, child: button);
+      },
+    );
   }
 
   Widget _buildTextButton() {
-    return TextButton(
+    final button = TextButton(
       onPressed: isLoading ? null : onPressed,
       style: TextButton.styleFrom(
         foregroundColor: AppColors.primary,
-        minimumSize: isFullWidth ? const Size(double.infinity, 48) : null,
+        minimumSize: const Size(0, 48),
         padding: _getPadding(),
       ),
       child: _buildContent(AppColors.primary),
     );
+    if (!isFullWidth) return button;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite ? constraints.maxWidth : null;
+        return SizedBox(width: width, child: button);
+      },
+    );
   }
 
   Widget _buildGhostButton() {
-    return TextButton(
+    final button = TextButton(
       onPressed: isLoading ? null : onPressed,
       style: TextButton.styleFrom(
         foregroundColor: AppColors.textSecondary,
-        minimumSize: isFullWidth ? const Size(double.infinity, 48) : null,
+        minimumSize: const Size(0, 48),
         padding: _getPadding(),
       ),
       child: _buildContent(AppColors.textSecondary),
+    );
+    if (!isFullWidth) return button;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite ? constraints.maxWidth : null;
+        return SizedBox(width: width, child: button);
+      },
     );
   }
 

@@ -35,6 +35,10 @@ abstract class AppSpacing {
   static const EdgeInsets all20 = EdgeInsets.all(space20);
   static const EdgeInsets all24 = EdgeInsets.all(space24);
   static const EdgeInsets all32 = EdgeInsets.all(space32);
+  
+  static const double space2 = 2.0;
+  static const double space10 = 10.0;
+  static const EdgeInsets all10 = EdgeInsets.all(space10);
 
   static const EdgeInsets horizontal4 = EdgeInsets.symmetric(horizontal: space4);
   static const EdgeInsets horizontal8 = EdgeInsets.symmetric(horizontal: space8);
@@ -74,4 +78,7 @@ abstract class AppSpacing {
   static const SizedBox horizontalGap16 = SizedBox(width: space16);
   static const SizedBox horizontalGap20 = SizedBox(width: space20);
   static const SizedBox horizontalGap24 = SizedBox(width: space24);
+  static const SizedBox horizontalGap32 = SizedBox(width: space32);
+  
+  static const SizedBox verticalGap2 = SizedBox(height: space2);
 }

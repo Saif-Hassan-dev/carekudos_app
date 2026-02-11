@@ -58,14 +58,14 @@ class WelcomeScreen extends StatelessWidget {
               const Spacer(flex: 3),
               // Register Button
               AppButton.primary(
-                label: 'Create Account',
+                text: 'Create Account',
                 onPressed: () => context.go('/onboarding'),
                 isFullWidth: true,
               ),
               AppSpacing.verticalGap12,
               // Login Button
               AppButton.secondary(
-                label: 'Sign In',
+                text: 'Sign In',
                 onPressed: () => context.go('/login'),
                 isFullWidth: true,
               ),
