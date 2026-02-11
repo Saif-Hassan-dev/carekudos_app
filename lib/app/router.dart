@@ -7,6 +7,8 @@ import '../features/auth/login_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/feed/create_post_screen.dart';
+import '../features/profile/profile_screen.dart';
+import '../features/settings/settings_screen.dart';
 import '../core/auth/auth_provider.dart';
 import '../core/auth/permissions_provider.dart';
 
@@ -51,6 +53,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/create-post',
         builder: (context, state) => const CreatePostScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );

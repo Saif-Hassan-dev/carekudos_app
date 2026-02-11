@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/onboarding_provider.dart';
+import '../../../core/theme/theme.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/cards.dart';
 
 class RoleSelectionScreen extends ConsumerStatefulWidget {
   final VoidCallback onNext;
@@ -24,9 +26,38 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
 
   void _continueWithRole() {
     if (_selectedRole != null) {
-      // Save role to onboarding state
       ref.read(onboardingProvider.notifier).setRole(_selectedRole!);
       widget.onNext();
+    }
+  }
+
+  IconData _getRoleIcon(String roleId) {
+    switch (roleId) {
+      case 'care_worker':
+        return Icons.volunteer_activism_outlined;
+      case 'senior_carer':
+        return Icons.supervisor_account_outlined;
+      case 'manager':
+        return Icons.admin_panel_settings_outlined;
+      case 'family_member':
+        return Icons.family_restroom_outlined;
+      default:
+        return Icons.person_outline;
+    }
+  }
+
+  String _getRoleDescription(String roleId) {
+    switch (roleId) {
+      case 'care_worker':
+        return 'Provide direct care to residents';
+      case 'senior_carer':
+        return 'Lead and mentor care workers';
+      case 'manager':
+        return 'Oversee team and operations';
+      case 'family_member':
+        return 'Stay connected with your loved one';
+      default:
+        return '';
     }
   }
 
@@ -40,39 +71,54 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
     ];
 
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const SizedBox(height: 40),
-            Column(
-              children: [
-                const Text(
-                  'I AM A :',
-                  style: TextStyle(
-                    fontSize: 35,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: AppSpacing.all24,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSpacing.verticalGap40,
+              Text(
+                'I am a...',
+                style: AppTypography.displayD2.copyWith(
+                  color: AppColors.primary,
                 ),
-                const SizedBox(height: 32),
-                ...roles.map(
-                  (role) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: RadioListTile(
-                      title: Text(role['label']!),
-                      value: role['id']!,
-                      groupValue: _selectedRole,
-                      onChanged: (value) =>
-                          setState(() => _selectedRole = value),
-                    ),
-                  ),
+              ),
+              AppSpacing.verticalGap8,
+              Text(
+                'Select your role to personalize your experience',
+                style: AppTypography.bodyB3.copyWith(
+                  color: AppColors.textSecondary,
                 ),
-              ],
-            ),
-            CustomButton(text: 'Continue', onPressed: _continueWithRole),
-          ],
+              ),
+              AppSpacing.verticalGap32,
+              Expanded(
+                child: ListView.separated(
+                  itemCount: roles.length,
+                  separatorBuilder: (_, __) => AppSpacing.verticalGap12,
+                  itemBuilder: (context, index) {
+                    final role = roles[index];
+                    final roleId = role['id']!;
+                    return SelectionCard(
+                      title: role['label']!,
+                      description: _getRoleDescription(roleId),
+                      icon: _getRoleIcon(roleId),
+                      isSelected: _selectedRole == roleId,
+                      onTap: () => setState(() => _selectedRole = roleId),
+                    );
+                  },
+                ),
+              ),
+              AppSpacing.verticalGap24,
+              AppButton.primary(
+                label: 'Continue',
+                onPressed: _selectedRole != null ? _continueWithRole : null,
+                isFullWidth: true,
+              ),
+              AppSpacing.verticalGap16,
+            ],
+          ),
         ),
       ),
     );

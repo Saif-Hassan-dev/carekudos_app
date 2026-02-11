@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/theme.dart';
 import '../../../core/widgets/custom_button.dart';
 
 class GdprTrainingScreen extends StatefulWidget {
@@ -15,8 +16,9 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
   int _currentQuizIndex = 0;
   int _correctAnswers = 0;
   bool _quizCompleted = false;
+  bool? _lastAnswerCorrect;
+  bool _showFeedback = false;
 
-  // Regular training slides
   final List<Map<String, String>> slides = [
     {
       'title': 'What is personal data?',
@@ -35,31 +37,30 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
     },
   ];
 
-  // Quiz questions - add as many as you want!
   final List<Map<String, dynamic>> quizQuestions = [
     {
       'question': '"Sarah enjoyed her afternoon activity"',
-      'isGdprSafe': false, // Sarah is a name = personal data
+      'isGdprSafe': false,
       'explanation': '"Sarah" is a personal identifier.',
     },
     {
       'question': '"The resident in the blue room had visitors"',
-      'isGdprSafe': false, // Room description can identify someone
+      'isGdprSafe': false,
       'explanation': '"Blue room" could identify a specific person.',
     },
     {
       'question': '"A lady enjoyed the music therapy session"',
-      'isGdprSafe': true, // Generic, no identifiers
+      'isGdprSafe': true,
       'explanation': 'No personal identifiers - this is GDPR safe!',
     },
     {
       'question': '"Mr. Johnson\'s medication was administered"',
-      'isGdprSafe': false, // Name = personal data
+      'isGdprSafe': false,
       'explanation': '"Mr. Johnson" is a personal identifier.',
     },
     {
       'question': '"Someone had a great day at the facility"',
-      'isGdprSafe': true, // Generic and safe
+      'isGdprSafe': true,
       'explanation': 'No identifiers - perfectly safe!',
     },
   ];
@@ -71,7 +72,6 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
     if (_currentSlide < slides.length - 1) {
       setState(() => _currentSlide++);
     } else if (_currentSlide == slides.length - 1) {
-      // Move to quiz section
       setState(() => _currentSlide++);
     }
   }
@@ -83,66 +83,65 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
   }
 
   void _answerQuiz(bool userAnsweredSafe) {
+    if (_showFeedback) return;
+
     final currentQuestion = quizQuestions[_currentQuizIndex];
     final correctAnswer = currentQuestion['isGdprSafe'] as bool;
     final isCorrect = userAnsweredSafe == correctAnswer;
 
-    if (isCorrect) {
-      _correctAnswers++;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Correct! ${currentQuestion['explanation']}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+    setState(() {
+      _showFeedback = true;
+      _lastAnswerCorrect = isCorrect;
+      if (isCorrect) _correctAnswers++;
+    });
 
-      // Move to next quiz or complete
-      Future.delayed(const Duration(seconds: 2), () {
-        setState(() {
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      setState(() {
+        _showFeedback = false;
+        _lastAnswerCorrect = null;
+        if (isCorrect) {
           _currentQuizIndex++;
           if (_allQuizzesCompleted) {
             _quizCompleted = true;
           }
-        });
+        }
       });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Incorrect! ${currentQuestion['explanation']}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      // Retry same question - don't advance
-    }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: AppSpacing.all24,
           child: Column(
             children: [
-              const SizedBox(height: 20),
-
+              AppSpacing.verticalGap20,
+              // Progress indicator
+              _buildProgressIndicator(),
+              AppSpacing.verticalGap24,
               // Title
               Text(
                 _isOnQuizSection
-                    ? 'Quiz (${_currentQuizIndex + 1}/${quizQuestions.length})'
-                    : 'GDPR Training (${_currentSlide + 1}/${slides.length})',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                    ? 'GDPR Quiz'
+                    : 'GDPR Training',
+                style: AppTypography.displayD3,
+              ),
+              AppSpacing.verticalGap8,
+              Text(
+                _isOnQuizSection
+                    ? 'Question ${_currentQuizIndex + 1} of ${quizQuestions.length}'
+                    : 'Step ${_currentSlide + 1} of ${slides.length}',
+                style: AppTypography.bodyB3.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
+              AppSpacing.verticalGap32,
 
-              const SizedBox(height: 32),
-
-              // Content Card
+              // Content
               if (!_isOnQuizSection)
                 _buildSlideCard()
               else if (!_allQuizzesCompleted)
@@ -150,39 +149,16 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
               else
                 _buildCompletionCard(),
 
-              const SizedBox(height: 40),
+              AppSpacing.verticalGap40,
 
               // Navigation Buttons
               if (!_quizCompleted)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    CustomButton(
-                      text: 'Back',
-                      onPressed: _currentSlide > 0 && !_isOnQuizSection
-                          ? _previousSlide
-                          : null,
-                      isFullWidth: false,
-                    ),
-                    if (!_isOnQuizSection)
-                      if (!_isOnQuizSection)
-                        CustomButton(
-                          text: _currentSlide == slides.length - 1
-                              ? 'Start Quiz'
-                              : 'Next',
-                          onPressed: _nextSlide,
-                          isFullWidth: false,
-                        ),
-                  ],
-                )
+                _buildNavigationButtons()
               else
-                Center(
-                  child: CustomButton(
-                    text: 'Continue to Next Step',
-                    onPressed: widget.onNext,
-                    backgroundColor: Colors.green,
-                    isFullWidth: false,
-                  ),
+                AppButton.primary(
+                  label: 'Continue',
+                  onPressed: widget.onNext,
+                  isFullWidth: true,
                 ),
             ],
           ),
@@ -191,25 +167,87 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
     );
   }
 
+  Widget _buildProgressIndicator() {
+    final totalSteps = slides.length + quizQuestions.length;
+    final currentStep = _isOnQuizSection
+        ? slides.length + _currentQuizIndex
+        : _currentSlide;
+    final progress = (currentStep + 1) / totalSteps;
+
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: AppRadius.allPill,
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: AppColors.neutral200,
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            minHeight: 8,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNavigationButtons() {
+    if (_isOnQuizSection) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        if (_currentSlide > 0)
+          Expanded(
+            child: AppButton.secondary(
+              label: 'Back',
+              onPressed: _previousSlide,
+            ),
+          ),
+        if (_currentSlide > 0) AppSpacing.horizontalGap12,
+        Expanded(
+          child: AppButton.primary(
+            label: _currentSlide == slides.length - 1 ? 'Start Quiz' : 'Next',
+            onPressed: _nextSlide,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSlideCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: AppSpacing.all24,
       decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.primaryLight,
+        borderRadius: AppRadius.allXl,
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
       ),
       child: Column(
         children: [
+          Container(
+            padding: AppSpacing.all16,
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.shield_outlined,
+              color: AppColors.neutral0,
+              size: 32,
+            ),
+          ),
+          AppSpacing.verticalGap20,
           Text(
             slides[_currentSlide]['title']!,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: AppTypography.headingH4,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          AppSpacing.verticalGap16,
           Text(
             slides[_currentSlide]['content']!,
-            style: const TextStyle(fontSize: 16),
+            style: AppTypography.bodyB3.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.6,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -222,64 +260,115 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
 
     return Column(
       children: [
+        // Question card
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(24),
+          padding: AppSpacing.all24,
           decoration: BoxDecoration(
-            color: Colors.orange[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.orange, width: 2),
+            color: _showFeedback
+                ? (_lastAnswerCorrect == true
+                    ? AppColors.successLight
+                    : AppColors.errorLight)
+                : AppColors.secondaryLight,
+            borderRadius: AppRadius.allXl,
+            border: Border.all(
+              color: _showFeedback
+                  ? (_lastAnswerCorrect == true
+                      ? AppColors.success
+                      : AppColors.error)
+                  : AppColors.secondary,
+              width: 2,
+            ),
           ),
           child: Column(
             children: [
-              const Text(
-                'Is this GDPR-safe?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+              Icon(
+                _showFeedback
+                    ? (_lastAnswerCorrect == true
+                        ? Icons.check_circle
+                        : Icons.cancel)
+                    : Icons.help_outline,
+                color: _showFeedback
+                    ? (_lastAnswerCorrect == true
+                        ? AppColors.success
+                        : AppColors.error)
+                    : AppColors.secondary,
+                size: 48,
               ),
-              const SizedBox(height: 16),
+              AppSpacing.verticalGap16,
+              Text(
+                _showFeedback
+                    ? (_lastAnswerCorrect == true ? 'Correct!' : 'Incorrect')
+                    : 'Is this GDPR-safe?',
+                style: AppTypography.headingH5.copyWith(
+                  color: _showFeedback
+                      ? (_lastAnswerCorrect == true
+                          ? AppColors.success
+                          : AppColors.error)
+                      : AppColors.textPrimary,
+                ),
+              ),
+              AppSpacing.verticalGap16,
               Text(
                 question['question'] as String,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: AppTypography.bodyB2.copyWith(
                   fontStyle: FontStyle.italic,
+                  color: AppColors.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),
+              if (_showFeedback) ...[
+                AppSpacing.verticalGap12,
+                Text(
+                  question['explanation'] as String,
+                  style: AppTypography.bodyB4.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ],
           ),
         ),
+        AppSpacing.verticalGap24,
 
-        const SizedBox(height: 24),
-
-        // Answer Buttons
-        Row(
-          children: [
-            Expanded(
-              child: CustomButton(
-                text: 'GDPR Safe',
-                icon: Icons.check_circle,
-                onPressed: () => _answerQuiz(true),
-                backgroundColor: Colors.green,
+        // Answer buttons
+        if (!_showFeedback)
+          Row(
+            children: [
+              Expanded(
+                child: QuizActionButton(
+                  label: 'Yes',
+                  icon: Icons.check,
+                  onPressed: () => _answerQuiz(true),
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: CustomButton(
-                text: 'Contains Personal Data',
-                icon: Icons.warning,
-                onPressed: () => _answerQuiz(false),
-                backgroundColor: Colors.red,
+              AppSpacing.horizontalGap12,
+              Expanded(
+                child: QuizActionButton(
+                  label: 'No',
+                  icon: Icons.close,
+                  isSecondary: true,
+                  onPressed: () => _answerQuiz(false),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
 
+        AppSpacing.verticalGap16,
         // Score display
-        const SizedBox(height: 16),
-        Text(
-          'Score: $_correctAnswers/${quizQuestions.length}',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.neutral100,
+            borderRadius: AppRadius.allPill,
+          ),
+          child: Text(
+            'Score: $_correctAnswers / ${quizQuestions.length}',
+            style: AppTypography.bodyB4.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     );
@@ -289,43 +378,50 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
     final passedQuiz = _correctAnswers >= quizQuestions.length;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: AppSpacing.all24,
       decoration: BoxDecoration(
-        color: passedQuiz ? Colors.green[50] : Colors.red[50],
-        borderRadius: BorderRadius.circular(12),
+        color: passedQuiz ? AppColors.successLight : AppColors.errorLight,
+        borderRadius: AppRadius.allXl,
         border: Border.all(
-          color: passedQuiz ? Colors.green : Colors.red,
+          color: passedQuiz ? AppColors.success : AppColors.error,
           width: 2,
         ),
       ),
       child: Column(
         children: [
-          Icon(
-            passedQuiz ? Icons.check_circle : Icons.error,
-            color: passedQuiz ? Colors.green : Colors.red,
-            size: 64,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            passedQuiz ? 'Quiz Completed!' : 'Quiz Failed',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: passedQuiz ? Colors.green : Colors.red,
+          Container(
+            padding: AppSpacing.all16,
+            decoration: BoxDecoration(
+              color: passedQuiz ? AppColors.success : AppColors.error,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              passedQuiz ? Icons.check : Icons.close,
+              color: AppColors.neutral0,
+              size: 32,
             ),
           ),
-          const SizedBox(height: 12),
+          AppSpacing.verticalGap16,
           Text(
-            'Final Score: $_correctAnswers/${quizQuestions.length}',
-            style: const TextStyle(fontSize: 18),
+            passedQuiz ? 'Quiz Completed!' : 'Try Again',
+            style: AppTypography.headingH3.copyWith(
+              color: passedQuiz ? AppColors.success : AppColors.error,
+            ),
           ),
-          const SizedBox(height: 8),
+          AppSpacing.verticalGap12,
+          Text(
+            'Final Score: $_correctAnswers / ${quizQuestions.length}',
+            style: AppTypography.headingH5,
+          ),
+          AppSpacing.verticalGap8,
           Text(
             passedQuiz
                 ? 'You\'ve successfully completed the GDPR training!'
                 : 'Please review the material and try again.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14),
+            style: AppTypography.bodyB3.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),

@@ -32,6 +32,9 @@ dependencies:
     sdk: flutter
 
 
+  #fonts 
+  google_fonts: ^6.1.0
+  
   #library for formatting
   intl: ^0.18.0
 

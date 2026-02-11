@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'router.dart';
+import '../core/theme/theme.dart';
 
 class CareKudosApp extends ConsumerWidget {
   const CareKudosApp({super.key});
@@ -12,6 +13,7 @@ class CareKudosApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'CareKudos',
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
       routerConfig: router,
     );
   }

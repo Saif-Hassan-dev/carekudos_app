@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/theme/theme.dart';
 import '../../core/widgets/custom_button.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -8,64 +9,67 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: AppSpacing.horizontal24,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo/Hero Image
+              const Spacer(flex: 2),
+              // Logo
               Container(
-                height: 200,
-                width: 200,
+                height: 120,
+                width: 120,
                 decoration: BoxDecoration(
-                  color: Colors.blue[100],
-                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.primaryLight,
+                  borderRadius: AppRadius.allXxl,
                 ),
                 child: const Icon(
-                  Icons.health_and_safety,
-                  size: 80,
-                  color: Colors.blue,
+                  Icons.star_rounded,
+                  size: 64,
+                  color: AppColors.primary,
                 ),
               ),
-
-              const SizedBox(height: 40),
-
+              AppSpacing.verticalGap32,
               // Welcome Text
-              const Text(
-                'Welcome to CareKudos',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 16),
-
-              const Text(
-                'Recognizing care excellence,\nprotecting privacy',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 60),
-
-              // Register Button
-              CustomButton(
-                text: 'Create Account',
-                onPressed: () => context.go('/onboarding'),
-                backgroundColor: Colors.blue,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Login Button
-              OutlinedButton(
-                onPressed: () => context.go('/login'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 56),
-                  side: const BorderSide(color: Colors.blue, width: 2),
+              Text(
+                'Welcome to',
+                style: AppTypography.headingH3.copyWith(
+                  color: AppColors.textSecondary,
                 ),
-                child: const Text('Login', style: TextStyle(fontSize: 18)),
+                textAlign: TextAlign.center,
               ),
+              AppSpacing.verticalGap8,
+              Text(
+                'CareKudos',
+                style: AppTypography.displayD1.copyWith(
+                  color: AppColors.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              AppSpacing.verticalGap16,
+              Text(
+                'Recognizing care excellence,\nprotecting privacy',
+                style: AppTypography.bodyB2.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const Spacer(flex: 3),
+              // Register Button
+              AppButton.primary(
+                label: 'Create Account',
+                onPressed: () => context.go('/onboarding'),
+                isFullWidth: true,
+              ),
+              AppSpacing.verticalGap12,
+              // Login Button
+              AppButton.secondary(
+                label: 'Sign In',
+                onPressed: () => context.go('/login'),
+                isFullWidth: true,
+              ),
+              AppSpacing.verticalGap40,
             ],
           ),
         ),

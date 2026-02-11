@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/providers/onboarding_provider.dart';
+import '../../../core/theme/theme.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../core/utils/extensions.dart';
@@ -23,11 +24,15 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   late TextEditingController _confirmPasswordController;
   late TextEditingController _orgCodeController;
   final _formKey = GlobalKey<FormState>();
-  bool _passwordsMatch = true;
   bool _isLoading = false;
+  
+  // Error states for each field
+  String? _emailError;
+  String? _passwordError;
+  String? _confirmPasswordError;
+  String? _orgCodeError;
 
   @override
-  // initialize controllers
   void initState() {
     super.initState();
     _emailController = TextEditingController();
@@ -45,36 +50,62 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     super.dispose();
   }
 
-  // for password match validation
-
-  void _validatePasswords() {
-    setState(() {
-      _passwordsMatch =
-          _passwordController.text == _confirmPasswordController.text;
-    });
+  void _validateEmail(String value) {
+    final error = Validators.validateEmail(value);
+    setState(() => _emailError = error);
   }
 
-  Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
+  void _validatePassword(String value) {
+    final error = Validators.validatePassword(value);
+    setState(() => _passwordError = error);
+    _validateConfirmPassword(_confirmPasswordController.text);
+  }
 
-    if (!_passwordsMatch) {
-      context.showErrorSnackBar('Passwords do not match');
-      return;
+  void _validateConfirmPassword(String value) {
+    if (value.isEmpty) {
+      setState(() => _confirmPasswordError = null);
+    } else if (value != _passwordController.text) {
+      setState(() => _confirmPasswordError = 'Passwords do not match');
+    } else {
+      setState(() => _confirmPasswordError = null);
     }
+  }
+
+  void _validateOrgCode(String value) {
+    final error = Validators.validateOrgCode(value);
+    setState(() => _orgCodeError = error);
+  }
+
+  bool get _hasErrors =>
+      _emailError != null ||
+      _passwordError != null ||
+      _confirmPasswordError != null ||
+      _orgCodeError != null;
+
+  bool get _allFieldsFilled =>
+      _emailController.text.isNotEmpty &&
+      _passwordController.text.isNotEmpty &&
+      _confirmPasswordController.text.isNotEmpty &&
+      _orgCodeController.text.isNotEmpty;
+
+  Future<void> _register() async {
+    // Validate all fields
+    _validateEmail(_emailController.text);
+    _validatePassword(_passwordController.text);
+    _validateConfirmPassword(_confirmPasswordController.text);
+    _validateOrgCode(_orgCodeController.text);
+
+    if (_hasErrors || !_allFieldsFilled) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Create user with Firebase Auth
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
-      // Save registration data to onboarding state
-      ref
-          .read(onboardingProvider.notifier)
-          .setRegistration(
+      ref.read(onboardingProvider.notifier).setRegistration(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             orgCode: _orgCodeController.text,
@@ -93,63 +124,85 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: AppSpacing.all24,
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 40),
-                const Text(
+                AppSpacing.verticalGap40,
+                Text(
                   'Create Account',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: AppTypography.displayD2,
                 ),
-                const SizedBox(height: 32),
+                AppSpacing.verticalGap8,
+                Text(
+                  'Enter your details to get started',
+                  style: AppTypography.bodyB3.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                AppSpacing.verticalGap32,
 
-                CustomTextField(
+                AppTextField(
                   controller: _emailController,
-                  labelText: 'Email',
+                  label: 'Email',
+                  hintText: 'Enter your email address',
                   keyboardType: TextInputType.emailAddress,
-                  validator: Validators.validateEmail,
-                  prefixIcon: Icons.email,
+                  errorText: _emailError,
+                  onChanged: _validateEmail,
+                  prefixIcon: Icons.email_outlined,
+                  textInputAction: TextInputAction.next,
                 ),
+                AppSpacing.verticalGap20,
 
-                const SizedBox(height: 16),
-
-                CustomTextField(
+                AppTextField(
                   controller: _passwordController,
-                  labelText: 'Password',
+                  label: 'Password',
+                  hintText: 'Create a strong password',
                   obscureText: true,
-                  validator: Validators.validatePassword,
-                  onChanged: (_) => _validatePasswords(),
-                  prefixIcon: Icons.lock,
+                  errorText: _passwordError,
+                  onChanged: _validatePassword,
+                  prefixIcon: Icons.lock_outline,
+                  textInputAction: TextInputAction.next,
                 ),
+                AppSpacing.verticalGap20,
 
-                const SizedBox(height: 16),
-                CustomTextField(
+                AppTextField(
                   controller: _confirmPasswordController,
-                  labelText: 'Confirm Password',
+                  label: 'Confirm Password',
+                  hintText: 'Re-enter your password',
                   obscureText: true,
-                  onChanged: (_) => _validatePasswords(),
-                  prefixIcon: Icons.lock,
+                  errorText: _confirmPasswordError,
+                  onChanged: _validateConfirmPassword,
+                  prefixIcon: Icons.lock_outline,
+                  textInputAction: TextInputAction.next,
                 ),
-                const SizedBox(height: 16),
+                AppSpacing.verticalGap20,
 
-                CustomTextField(
+                AppTextField(
                   controller: _orgCodeController,
-                  labelText: 'Organization Code',
-                  helperText: 'Ask your manager for this',
-                  validator: Validators.validateOrgCode,
-                  prefixIcon: Icons.business,
+                  label: 'Organization Code',
+                  hintText: 'Enter your organization code',
+                  helperText: 'Ask your manager for this code',
+                  errorText: _orgCodeError,
+                  onChanged: _validateOrgCode,
+                  prefixIcon: Icons.business_outlined,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _register(),
                 ),
+                AppSpacing.verticalGap40,
 
-                const SizedBox(height: 40),
-                CustomButton(
-                  text: 'Continue',
-                  onPressed: _register,
+                AppButton.primary(
+                  label: 'Continue',
+                  onPressed: _allFieldsFilled && !_hasErrors ? _register : null,
                   isLoading: _isLoading,
+                  isFullWidth: true,
                 ),
+                AppSpacing.verticalGap16,
               ],
             ),
           ),

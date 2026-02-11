@@ -16,6 +16,10 @@ import '../../core/auth/auth_notifier.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../stars/providers/star_provider.dart';
 import '../../core/widgets/tutorial_overlay.dart';
+import '../../core/theme/theme.dart';
+import '../../core/widgets/cards.dart';
+import '../../core/widgets/custom_text_field.dart';
+import '../../core/widgets/app_bottom_nav.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -25,9 +29,26 @@ class FeedScreen extends ConsumerStatefulWidget {
 }
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
+  int _currentNavIndex = 0;
+
   @override
   void initState() {
     super.initState();
+  }
+
+  void _onNavTap(int index) {
+    if (index == 1) {
+      // Create tab - go to create post
+      context.push('/create-post');
+    } else if (index == 2) {
+      // Alerts - show notifications (to be implemented)
+      context.showSnackBar('Notifications coming soon!');
+    } else if (index == 3) {
+      // Profile
+      context.showSnackBar('Profile coming soon!');
+    } else {
+      setState(() => _currentNavIndex = index);
+    }
   }
 
   @override
@@ -36,7 +57,6 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     final userProfile = ref.watch(userProfileProvider);
 
     if (user == null) {
-      // Shouldn't happen due to router redirect, but safety check
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.go('/welcome');
       });
@@ -49,11 +69,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       error: (_, __) => false,
     );
 
-    //one time tutorial overlay for feed screen
     return TutorialOverlay(
       showTutorial: showTutorial,
       onComplete: () async {
-        // Mark tutorial as seen in Firestore
         await FirebaseService.markTutorialSeen(user.uid, 'hasSeenFeedTutorial');
       },
       steps: const [
@@ -76,42 +94,59 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               'When others appreciate your post, they\'ll give you stars. Collect stars to level up!',
         ),
       ],
-
       child: Scaffold(
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text(AppConstants.appName),
+          backgroundColor: AppColors.cardBackground,
+          elevation: 0,
+          title: Row(
+            children: [
+              Container(
+                padding: AppSpacing.all8,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: AppRadius.allLg,
+                ),
+                child: const Icon(
+                  Icons.star_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              AppSpacing.horizontalGap8,
+              Text(
+                AppConstants.appName,
+                style: AppTypography.headingH5.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
           actions: [
-            // User email display
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: userProfile.when(
-                  data: (profile) => Text(
-                    profile?.firstName ?? user.email?.split('@')[0] ?? 'User',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  loading: () => const SizedBox(width: 40),
-                  error: (_, __) => Text(
-                    user.email?.split('@')[0] ?? 'User',
-                    style: const TextStyle(fontSize: 12),
+            // User greeting
+            userProfile.when(
+              data: (profile) => Padding(
+                padding: AppSpacing.horizontal8,
+                child: Center(
+                  child: Text(
+                    'Hi, ${profile?.firstName ?? user.email?.split('@')[0] ?? 'User'}',
+                    style: AppTypography.bodyB4.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ),
-            ),
-
-            IconButton(
-              icon: const Icon(Icons.person),
-              onPressed: () {
-                context.showSnackBar('Profile coming soon!');
-              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
             IconButton(
-              icon: const Icon(Icons.logout),
+              icon: const Icon(Icons.logout_outlined, color: AppColors.textSecondary),
               onPressed: () async {
                 await ref.read(authNotifierProvider.notifier).logout();
                 if (context.mounted) context.go('/welcome');
               },
             ),
+            AppSpacing.horizontalGap8,
           ],
         ),
         body: StreamBuilder<QuerySnapshot>(
@@ -125,7 +160,6 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               return const LoadingView(message: 'Loading feed...');
             }
 
-            // Show error
             if (snapshot.hasError) {
               return ErrorView(
                 title: 'Error Loading Feed',
@@ -134,102 +168,59 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               );
             }
 
-            // Show empty state
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
               return _buildEmptyState(context);
             }
 
-            // Show posts
-            return Column(
-              children: [
-                // Post count indicator
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  color: Colors.blue[50],
-                  child: Text(
-                    '${snapshot.data!.docs.length} posts in feed',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 80),
-                    itemCount: snapshot.data!.docs.length,
-                    itemBuilder: (context, index) {
-                      final doc = snapshot.data!.docs[index];
-                      final data = doc.data() as Map<String, dynamic>;
+            return ListView.separated(
+              padding: AppSpacing.all16,
+              itemCount: snapshot.data!.docs.length,
+              separatorBuilder: (_, __) => AppSpacing.verticalGap12,
+              itemBuilder: (context, index) {
+                final doc = snapshot.data!.docs[index];
+                final data = doc.data() as Map<String, dynamic>;
 
-                      return PostCard(
-                        postId: doc.id,
-                        authorId: data['authorId'] ?? '', // ADD THIS
-                        authorName: data['authorName'] ?? 'Anonymous',
-                        content: data['content'] ?? '',
-                        category: data['category'] ?? 'General',
-                        stars: data['stars'] ?? 0,
-                        createdAt: data['createdAt'] != null
-                            ? (data['createdAt'] as Timestamp).toDate()
-                            : DateTime.now(),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                return PostCard(
+                  postId: doc.id,
+                  authorId: data['authorId'] ?? '',
+                  authorName: data['authorName'] ?? 'Anonymous',
+                  content: data['content'] ?? '',
+                  category: data['category'] ?? 'General',
+                  stars: data['stars'] ?? 0,
+                  createdAt: data['createdAt'] != null
+                      ? (data['createdAt'] as Timestamp).toDate()
+                      : DateTime.now(),
+                );
+              },
             );
           },
         ),
-        floatingActionButton: FloatingActionButton.extended(
+        bottomNavigationBar: AppBottomNav(
+          currentIndex: _currentNavIndex,
+          onTap: _onNavTap,
+          notificationCount: 0,
+        ),
+        floatingActionButton: FloatingActionButton(
           onPressed: () => context.push('/create-post'),
-          icon: const Icon(Icons.add),
-          label: const Text('Share Achievement'),
-          backgroundColor: Colors.blue,
+          backgroundColor: AppColors.primary,
+          child: const Icon(Icons.add, color: AppColors.neutral0),
         ),
       ),
     );
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    return EmptyStateView(
-      icon: Icons.celebration,
-      title: 'Your feed is empty',
-      message: 'Share your first achievement!\nBe specific and GDPR-safe.',
-      actionText: 'Create Your First Post',
-      actionIcon: Icons.add,
-      onAction: () => context.push('/create-post'),
-      secondaryActionText: 'Create Sample Post (Test)',
-      onSecondaryAction: () => _createSamplePost(context),
+    return EmptyState(
+      icon: Icons.article_outlined,
+      title: 'No posts yet',
+      subtitle: 'Be the first to share an achievement!\nBe specific and GDPR-safe.',
+      action: FloatingActionButton.extended(
+        onPressed: () => context.push('/create-post'),
+        icon: const Icon(Icons.add),
+        label: const Text('Create Post'),
+        backgroundColor: AppColors.primary,
+      ),
     );
-  }
-
-  Future<void> _createSamplePost(BuildContext context) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      //creating sample post
-
-      await FirebaseFirestore.instance
-          .collection(AppConstants.postsCollection)
-          .add({
-            'authorId': user.uid,
-            'authorName': 'Test User',
-            'content':
-                'A team member showed exceptional compassion today by spending extra time with a resident who was feeling anxious.',
-            'category': 'Compassion',
-            'stars': 0,
-            'createdAt': FieldValue.serverTimestamp(),
-            'status': 'approved',
-          });
-
-      if (context.mounted) {
-        context.showSnackBar('✅ Sample post created!');
-      }
-    } catch (e) {
-      if (context.mounted) {
-        context.showErrorSnackBar(ErrorHandler.getGenericErrorMessage(e));
-      }
-    }
   }
 }
 
@@ -288,67 +279,166 @@ class _PostCardState extends ConsumerState<PostCard> {
     }
   }
 
+  Widget _getCategoryTag() {
+    switch (widget.category.toLowerCase()) {
+      case 'compassion':
+        return CategoryTag.compassion();
+      case 'teamwork':
+        return CategoryTag.teamwork();
+      case 'excellence':
+        return CategoryTag.excellence();
+      case 'leadership':
+        return CategoryTag.leadership();
+      case 'reliability':
+        return CategoryTag.reliability();
+      default:
+        return CategoryTag(
+          label: widget.category,
+          color: AppColors.primary,
+          backgroundColor: AppColors.primaryLight,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final canGiveStars = ref.watch(canGiveStarsProvider);
     final multiplier = ref.watch(starMultiplierProvider);
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: AppSpacing.all16,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header row
             Row(
               children: [
                 CircleAvatar(
-                  child: Text(Formatters.getInitials(widget.authorName)),
+                  backgroundColor: AppColors.primaryLight,
+                  child: Text(
+                    Formatters.getInitials(widget.authorName),
+                    style: AppTypography.bodyB4.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 12),
+                AppSpacing.horizontalGap12,
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.authorName,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: AppTypography.bodyB3.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       Text(
                         Formatters.timeAgo(widget.createdAt),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        style: AppTypography.captionC1.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Chip(
-                  label: Text(widget.category),
-                  backgroundColor: Colors.blue[100],
+                // Star display
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.star,
+                      color: AppColors.secondary,
+                      size: 18,
+                    ),
+                    AppSpacing.horizontalGap4,
+                    Text(
+                      Formatters.formatStarCount(widget.stars),
+                      style: AppTypography.bodyB4.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(widget.content),
-            const SizedBox(height: 12),
+            AppSpacing.verticalGap12,
+            // Content
+            Text(
+              widget.content,
+              style: AppTypography.bodyB3.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            AppSpacing.verticalGap12,
+            // Category tag
+            _getCategoryTag(),
+            AppSpacing.verticalGap12,
+            // Actions row
             Row(
               children: [
-                IconButton(
-                  icon: Icon(
-                    _hasGivenStar ? Icons.star : Icons.star_border,
-                    color: _hasGivenStar ? Colors.amber : null,
-                  ),
-                  onPressed: (!canGiveStars || _isGivingStar)
+                // Star button
+                InkWell(
+                  onTap: (!canGiveStars || _isGivingStar)
                       ? null
                       : () => _hasGivenStar
                             ? _removeStar(multiplier)
                             : _giveStar(multiplier),
+                  borderRadius: AppRadius.allSm,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _hasGivenStar ? Icons.star : Icons.star_border,
+                          size: 20,
+                          color: _hasGivenStar
+                              ? AppColors.secondary
+                              : AppColors.textTertiary,
+                        ),
+                        AppSpacing.horizontalGap4,
+                        Text(
+                          _hasGivenStar ? 'Starred' : 'Give Star',
+                          style: AppTypography.captionC1.copyWith(
+                            color: _hasGivenStar
+                                ? AppColors.secondary
+                                : AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                Text('${Formatters.formatStarCount(widget.stars)} stars'),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.comment_outlined),
-                  label: const Text('Comment'),
+                AppSpacing.horizontalGap16,
+                // Comment button
+                InkWell(
+                  onTap: () {},
+                  borderRadius: AppRadius.allSm,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.chat_bubble_outline,
+                          size: 20,
+                          color: AppColors.textTertiary,
+                        ),
+                        AppSpacing.horizontalGap4,
+                        Text(
+                          'Comment',
+                          style: AppTypography.captionC1.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -367,14 +457,12 @@ class _PostCardState extends ConsumerState<PostCard> {
     try {
       final starService = ref.read(starPostProvider);
 
-      // Use the StarService from provider
       await starService.giveStarToPost(
         postId: widget.postId,
         postAuthorId: widget.authorId,
         multiplier: multiplier.toDouble(),
       );
 
-      // Update starredBy array
       await FirebaseFirestore.instance
           .collection(AppConstants.postsCollection)
           .doc(widget.postId)
