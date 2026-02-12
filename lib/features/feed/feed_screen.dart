@@ -18,6 +18,7 @@ import '../../core/theme/theme.dart';
 import '../../core/widgets/cards.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/widgets/app_bottom_nav.dart';
+import '../../core/widgets/app_logo.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -97,29 +98,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         appBar: AppBar(
           backgroundColor: AppColors.cardBackground,
           elevation: 0,
-          title: Row(
-            children: [
-              Container(
-                padding: AppSpacing.all8,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: AppRadius.allLg,
-                ),
-                child: const Icon(
-                  Icons.star_rounded,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-              ),
-              AppSpacing.horizontalGap8,
-              Text(
-                AppConstants.appName,
-                style: AppTypography.headingH5.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
+          title: const AppLogo(size: LogoSize.lg, showText: true),
           actions: [
             // User greeting
             userProfile.when(

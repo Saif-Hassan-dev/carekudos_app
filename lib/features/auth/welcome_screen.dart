@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/custom_button.dart';
+import '../../core/widgets/app_logo.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -17,19 +18,7 @@ class WelcomeScreen extends StatelessWidget {
             children: [
               const Spacer(flex: 2),
               // Logo
-              Container(
-                height: 120,
-                width: 120,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: AppRadius.allXxl,
-                ),
-                child: const Icon(
-                  Icons.star_rounded,
-                  size: 64,
-                  color: AppColors.primary,
-                ),
-              ),
+              const AppLogo(size: LogoSize.display),
               AppSpacing.verticalGap32,
               // Welcome Text
               Text(

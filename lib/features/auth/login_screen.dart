@@ -5,6 +5,7 @@ import '../../core/utils/validators.dart';
 import '../../core/utils/extensions.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
+import '../../core/widgets/app_logo.dart';
 import '../../core/auth/auth_notifier.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -61,6 +62,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 40),
+
+                // App Logo
+                const Center(
+                  child: AppLogo(size: LogoSize.xl, showText: true),
+                ),
+
+                const SizedBox(height: 32),
 
                 const Text(
                   'Welcome Back!',

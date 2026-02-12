@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/app_logo.dart';
 
 class ValuePropositionScreen extends StatelessWidget {
   final VoidCallback onNext;
@@ -16,6 +17,9 @@ class ValuePropositionScreen extends StatelessWidget {
           padding: AppSpacing.all24,
           child: Column(
             children: [
+              AppSpacing.verticalGap16,
+              // App Logo
+              const AppLogo(size: LogoSize.lg, showText: true),
               const Spacer(flex: 1),
               // Hero Image
               Container(
