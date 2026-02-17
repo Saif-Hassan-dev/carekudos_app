@@ -20,6 +20,8 @@ class UserProfile {
   final String? teamId;
   final List<String> managerIds;
   final bool hasSeenFeedTutorial;
+  final bool gdprConsentGiven;
+  final DateTime? gdprConsentTimestamp;
 
   UserProfile({
     required this.uid,
@@ -37,6 +39,8 @@ class UserProfile {
     this.teamId,
     this.managerIds = const [],
     this.hasSeenFeedTutorial = false,
+    this.gdprConsentGiven = false,
+    this.gdprConsentTimestamp,
   });
 
   factory UserProfile.fromFirestore(DocumentSnapshot doc) {
@@ -64,6 +68,10 @@ class UserProfile {
       managerIds: data['managerIds'] != null
           ? List<String>.from(data['managerIds'])
           : [],
+      gdprConsentGiven: data['gdprConsentGiven'] ?? false,
+      gdprConsentTimestamp: data['gdprConsentTimestamp'] != null
+          ? (data['gdprConsentTimestamp'] as Timestamp).toDate()
+          : null,
     );
   }
 

@@ -51,6 +51,10 @@ class FirebaseService {
         'organizationId': organizationId,
         'teamId': teamId,
         'managerIds': [],
+
+        // GDPR consent (initially false, set during onboarding)
+        'gdprConsentGiven': false,
+        'gdprConsentTimestamp': null,
       });
     } catch (e) {
       throw Exception('Failed to create user profile: $e');
@@ -62,5 +66,17 @@ class FirebaseService {
     String tutorialKey,
   ) async {
     await _db.collection('users').doc(userId).update({tutorialKey: true});
+  }
+
+  /// Record GDPR consent with timestamp
+  static Future<void> recordGdprConsent(String userId) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'gdprConsentGiven': true,
+        'gdprConsentTimestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to record GDPR consent: $e');
+    }
   }
 }

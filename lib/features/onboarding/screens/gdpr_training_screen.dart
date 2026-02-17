@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../../../core/services/firebase_service.dart';
 
 class GdprTrainingScreen extends StatefulWidget {
   final VoidCallback onNext;
@@ -67,6 +69,19 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
 
   bool get _isOnQuizSection => _currentSlide >= slides.length;
   bool get _allQuizzesCompleted => _currentQuizIndex >= quizQuestions.length;
+
+  Future<void> _completeTrainingAndContinue() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId != null) {
+      try {
+        await FirebaseService.recordGdprConsent(userId);
+      } catch (e) {
+        // Log error but continue - don't block user flow
+        debugPrint('Error recording GDPR consent: $e');
+      }
+    }
+    widget.onNext();
+  }
 
   void _nextSlide() {
     if (_currentSlide < slides.length - 1) {
@@ -157,7 +172,7 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
               else
                 AppButton.primary(
                   text: 'Continue',
-                  onPressed: widget.onNext,
+                  onPressed: _completeTrainingAndContinue,
                   isFullWidth: true,
                 ),
             ],
