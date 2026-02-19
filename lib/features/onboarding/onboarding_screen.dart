@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'screens/value_proposition_screen.dart';
 import 'screens/gdpr_explanation_screen.dart';
+import 'screens/gdpr_training_screen.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/registration_screen.dart';
-import 'screens/gdpr_training_screen.dart';
-import 'screens/profile_setup_screen.dart';
+import '../../core/services/storage_service.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-// diff screens in Onboarding!
-class _OnboardingScreenState extends State<OnboardingScreen> {
+// Onboarding flow: Quiz Intro → Quiz → Role Selection → Create Account
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   late PageController _pageController;
 
   @override
@@ -37,9 +37,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  void _completeOnboarding() {
+  Future<void> _completeOnboarding() async {
+    // Mark onboarding as complete
+    await StorageService.setOnboardingComplete(true);
     // Navigate to feed after onboarding is complete
-    context.go('/feed');
+    if (mounted) context.go('/feed');
   }
 
   @override
@@ -49,12 +51,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
         children: [
-          ValuePropositionScreen(onNext: _nextPage),
-          GdprExplanationScreen(onNext: _nextPage),
-          RoleSelectionScreen(onNext: _nextPage),
-          RegistrationScreen(onNext: _nextPage),
-          GdprTrainingScreen(onNext: _nextPage),
-          ProfileSetupScreen(onNext: _completeOnboarding),
+          GdprExplanationScreen(onNext: _nextPage), // Quiz Intro
+          GdprTrainingScreen(onNext: _nextPage),     // Quiz
+          RoleSelectionScreen(onNext: _nextPage),    // Role Selection
+          RegistrationScreen(onNext: _completeOnboarding), // Create Account (all info + profile)
         ],
       ),
     );

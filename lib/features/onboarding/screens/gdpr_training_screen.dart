@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/theme.dart';
-import '../../../core/widgets/custom_button.dart';
 import '../../../core/services/firebase_service.dart';
 
 class GdprTrainingScreen extends StatefulWidget {
@@ -14,61 +13,31 @@ class GdprTrainingScreen extends StatefulWidget {
 }
 
 class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
-  int _currentSlide = 0;
-  int _currentQuizIndex = 0;
-  int _correctAnswers = 0;
-  bool _quizCompleted = false;
-  bool? _lastAnswerCorrect;
+  int _currentQuestionIndex = 0;
+  bool? _selectedAnswer;
   bool _showFeedback = false;
-
-  final List<Map<String, String>> slides = [
-    {
-      'title': 'What is personal data?',
-      'content':
-          'Any information that can identify a person directly or indirectly.',
-    },
-    {
-      'title': 'Real Examples',
-      'content':
-          '✓ Good: "A gentleman had great company today"\n✗ Bad: "Mr. Smith had great company"',
-    },
-    {
-      'title': 'More Examples',
-      'content':
-          '✓ Good: "Their room was beautifully arranged"\n✗ Bad: "Room 12 was beautifully arranged"',
-    },
-  ];
+  bool _isCorrect = false;
 
   final List<Map<String, dynamic>> quizQuestions = [
     {
-      'question': '"Sarah enjoyed her afternoon activity"',
-      'isGdprSafe': false,
-      'explanation': '"Sarah" is a personal identifier.',
+      'question': 'Is it recommended not to share the patient\'s name in an recognition post?',
+      'correctAnswer': true, // Yes, it IS recommended NOT to share
+      'correctMessage': 'Correct. Patient names must never be shared.',
+      'incorrectMessage': 'Incorrect. Please try again.',
     },
     {
-      'question': '"The resident in the blue room had visitors"',
-      'isGdprSafe': false,
-      'explanation': '"Blue room" could identify a specific person.',
+      'question': 'Can you mention room numbers when recognising care?',
+      'correctAnswer': false, // No, you cannot
+      'correctMessage': 'Correct. Room numbers are personal identifiers.',
+      'incorrectMessage': 'Incorrect. Please try again.',
     },
     {
-      'question': '"A lady enjoyed the music therapy session"',
-      'isGdprSafe': true,
-      'explanation': 'No personal identifiers - this is GDPR safe!',
-    },
-    {
-      'question': '"Mr. Johnson\'s medication was administered"',
-      'isGdprSafe': false,
-      'explanation': '"Mr. Johnson" is a personal identifier.',
-    },
-    {
-      'question': '"Someone had a great day at the facility"',
-      'isGdprSafe': true,
-      'explanation': 'No identifiers - perfectly safe!',
+      'question': 'Is it acceptable to say "A resident enjoyed the activity"?',
+      'correctAnswer': true, // Yes, this is acceptable
+      'correctMessage': 'Correct. Generic terms protect privacy.',
+      'incorrectMessage': 'Incorrect. Please try again.',
     },
   ];
-
-  bool get _isOnQuizSection => _currentSlide >= slides.length;
-  bool get _allQuizzesCompleted => _currentQuizIndex >= quizQuestions.length;
 
   Future<void> _completeTrainingAndContinue() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -76,366 +45,246 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
       try {
         await FirebaseService.recordGdprConsent(userId);
       } catch (e) {
-        // Log error but continue - don't block user flow
         debugPrint('Error recording GDPR consent: $e');
       }
     }
     widget.onNext();
   }
 
-  void _nextSlide() {
-    if (_currentSlide < slides.length - 1) {
-      setState(() => _currentSlide++);
-    } else if (_currentSlide == slides.length - 1) {
-      setState(() => _currentSlide++);
-    }
-  }
-
-  void _previousSlide() {
-    if (_currentSlide > 0) {
-      setState(() => _currentSlide--);
-    }
-  }
-
-  void _answerQuiz(bool userAnsweredSafe) {
+  void _answerQuestion(bool answer) {
     if (_showFeedback) return;
 
-    final currentQuestion = quizQuestions[_currentQuizIndex];
-    final correctAnswer = currentQuestion['isGdprSafe'] as bool;
-    final isCorrect = userAnsweredSafe == correctAnswer;
+    final currentQuestion = quizQuestions[_currentQuestionIndex];
+    final correctAnswer = currentQuestion['correctAnswer'] as bool;
+    final isCorrect = answer == correctAnswer;
 
     setState(() {
+      _selectedAnswer = answer;
       _showFeedback = true;
-      _lastAnswerCorrect = isCorrect;
-      if (isCorrect) _correctAnswers++;
+      _isCorrect = isCorrect;
     });
+  }
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
+  void _nextQuestion() {
+    if (_currentQuestionIndex < quizQuestions.length - 1) {
       setState(() {
+        _currentQuestionIndex++;
+        _selectedAnswer = null;
         _showFeedback = false;
-        _lastAnswerCorrect = null;
-        if (isCorrect) {
-          _currentQuizIndex++;
-          if (_allQuizzesCompleted) {
-            _quizCompleted = true;
-          }
-        }
+        _isCorrect = false;
       });
-    });
+    } else {
+      // Quiz completed
+      _completeTrainingAndContinue();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentQuestion = quizQuestions[_currentQuestionIndex];
+    final questionText = currentQuestion['question'] as String;
+    
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppSpacing.all24,
-          child: Column(
-            children: [
-              AppSpacing.verticalGap20,
-              // Progress indicator
-              _buildProgressIndicator(),
-              AppSpacing.verticalGap24,
-              // Title
-              Text(
-                _isOnQuizSection
-                    ? 'GDPR Quiz'
-                    : 'GDPR Training',
-                style: AppTypography.displayD3,
-              ),
-              AppSpacing.verticalGap8,
-              Text(
-                _isOnQuizSection
-                    ? 'Question ${_currentQuizIndex + 1} of ${quizQuestions.length}'
-                    : 'Step ${_currentSlide + 1} of ${slides.length}',
-                style: AppTypography.bodyB3.copyWith(
-                  color: AppColors.textSecondary,
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 40),
+                    // Progress text
+                    Text(
+                      'Question ${_currentQuestionIndex + 1} of ${quizQuestions.length}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                    const Spacer(flex: 2),
+                    // Question text
+                    Text(
+                      questionText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0A2C6B),
+                        height: 1.3,
+                      ),
+                    ),
+                    const Spacer(flex: 1),
+                    // Yes/No buttons
+                    Column(
+                      children: [
+                        _buildAnswerButton(
+                          label: 'Yes',
+                          value: true,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildAnswerButton(
+                          label: 'No',
+                          value: false,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Feedback message
+                    if (_showFeedback) ...[
+                      Text(
+                        _isCorrect
+                            ? (currentQuestion['correctMessage'] as String)
+                            : (currentQuestion['incorrectMessage'] as String),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: _isCorrect ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ] else ...[
+                      const SizedBox(height: 56), // Spacer when no feedback
+                    ],
+                    // Continue button - always visible but disabled when not correct
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: (_showFeedback && _isCorrect) ? _nextQuestion : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: (_showFeedback && _isCorrect)
+                              ? const Color(0xFF0A2C6B)
+                              : const Color(0xFFE0E0E0),
+                          foregroundColor: (_showFeedback && _isCorrect)
+                              ? Colors.white
+                              : const Color(0xFFBDBDBD),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                          disabledBackgroundColor: const Color(0xFFE0E0E0),
+                          disabledForegroundColor: const Color(0xFFBDBDBD),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Continue',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: (_showFeedback && _isCorrect)
+                                    ? Colors.white
+                                    : const Color(0xFFBDBDBD),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 20,
+                              color: (_showFeedback && _isCorrect)
+                                  ? Colors.white
+                                  : const Color(0xFFBDBDBD),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Spacer(flex: 1),
+                  ],
                 ),
               ),
-              AppSpacing.verticalGap32,
-
-              // Content
-              if (!_isOnQuizSection)
-                _buildSlideCard()
-              else if (!_allQuizzesCompleted)
-                _buildQuizCard()
-              else
-                _buildCompletionCard(),
-
-              AppSpacing.verticalGap40,
-
-              // Navigation Buttons
-              if (!_quizCompleted)
-                _buildNavigationButtons()
-              else
-                AppButton.primary(
-                  text: 'Continue',
-                  onPressed: _completeTrainingAndContinue,
-                  isFullWidth: true,
-                ),
-            ],
-          ),
+            ),
+            // Bottom indicator bar
+            _buildBottomIndicator(),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildProgressIndicator() {
-    final totalSteps = slides.length + quizQuestions.length;
-    final currentStep = _isOnQuizSection
-        ? slides.length + _currentQuizIndex
-        : _currentSlide;
-    final progress = (currentStep + 1) / totalSteps;
-
-    return Column(
-      children: [
-        ClipRRect(
-          borderRadius: AppRadius.allPill,
-          child: LinearProgressIndicator(
-            value: progress,
-            backgroundColor: AppColors.neutral200,
-            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-            minHeight: 8,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNavigationButtons() {
-    if (_isOnQuizSection) return const SizedBox.shrink();
-
-    return Row(
-      children: [
-        if (_currentSlide > 0)
-          Expanded(
-            child: AppButton.secondary(
-              text: 'Back',
-              onPressed: _previousSlide,
-            ),
-          ),
-        if (_currentSlide > 0) AppSpacing.horizontalGap12,
-        Expanded(
-          child: AppButton.primary(
-            text: _currentSlide == slides.length - 1 ? 'Start Quiz' : 'Next',
-            onPressed: _nextSlide,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSlideCard() {
-    return Container(
+  Widget _buildAnswerButton({
+    required String label,
+    required bool value,
+  }) {
+    bool isSelected = _showFeedback && _selectedAnswer == value;
+    
+    Color backgroundColor;
+    Color borderColor;
+    Color textColor;
+    
+    if (isSelected) {
+      if (_isCorrect) {
+        backgroundColor = const Color(0xFF4CAF50); // Green
+        borderColor = const Color(0xFF4CAF50);
+        textColor = Colors.white;
+      } else {
+        backgroundColor = const Color(0xFFE53935); // Red
+        borderColor = const Color(0xFFE53935);
+        textColor = Colors.white;
+      }
+    } else {
+      backgroundColor = Colors.white;
+      borderColor = const Color(0xFFE0E0E0);
+      textColor = const Color(0xFF212121);
+    }
+    
+    return SizedBox(
       width: double.infinity,
-      padding: AppSpacing.all24,
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        borderRadius: AppRadius.allXl,
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: AppSpacing.all16,
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.shield_outlined,
-              color: AppColors.neutral0,
-              size: 32,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: _showFeedback ? null : () => _answerQuestion(value),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          foregroundColor: textColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(
+              color: borderColor,
+              width: 1,
             ),
           ),
-          AppSpacing.verticalGap20,
-          Text(
-            slides[_currentSlide]['title']!,
-            style: AppTypography.headingH4,
-            textAlign: TextAlign.center,
+          elevation: 0,
+          disabledBackgroundColor: backgroundColor,
+          disabledForegroundColor: textColor,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: textColor,
           ),
-          AppSpacing.verticalGap16,
-          Text(
-            slides[_currentSlide]['content']!,
-            style: AppTypography.bodyB3.copyWith(
-              color: AppColors.textSecondary,
-              height: 1.6,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildQuizCard() {
-    final question = quizQuestions[_currentQuizIndex];
-
-    return Column(
-      children: [
-        // Question card
-        Container(
-          width: double.infinity,
-          padding: AppSpacing.all24,
-          decoration: BoxDecoration(
-            color: _showFeedback
-                ? (_lastAnswerCorrect == true
-                    ? AppColors.successLight
-                    : AppColors.errorLight)
-                : AppColors.secondaryLight,
-            borderRadius: AppRadius.allXl,
-            border: Border.all(
-              color: _showFeedback
-                  ? (_lastAnswerCorrect == true
-                      ? AppColors.success
-                      : AppColors.error)
-                  : AppColors.secondary,
-              width: 2,
-            ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                _showFeedback
-                    ? (_lastAnswerCorrect == true
-                        ? Icons.check_circle
-                        : Icons.cancel)
-                    : Icons.help_outline,
-                color: _showFeedback
-                    ? (_lastAnswerCorrect == true
-                        ? AppColors.success
-                        : AppColors.error)
-                    : AppColors.secondary,
-                size: 48,
-              ),
-              AppSpacing.verticalGap16,
-              Text(
-                _showFeedback
-                    ? (_lastAnswerCorrect == true ? 'Correct!' : 'Incorrect')
-                    : 'Is this GDPR-safe?',
-                style: AppTypography.headingH5.copyWith(
-                  color: _showFeedback
-                      ? (_lastAnswerCorrect == true
-                          ? AppColors.success
-                          : AppColors.error)
-                      : AppColors.textPrimary,
-                ),
-              ),
-              AppSpacing.verticalGap16,
-              Text(
-                question['question'] as String,
-                style: AppTypography.bodyB2.copyWith(
-                  fontStyle: FontStyle.italic,
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (_showFeedback) ...[
-                AppSpacing.verticalGap12,
-                Text(
-                  question['explanation'] as String,
-                  style: AppTypography.bodyB4.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ],
-          ),
-        ),
-        AppSpacing.verticalGap24,
-
-        // Answer buttons
-        if (!_showFeedback)
-          Row(
-            children: [
-              Expanded(
-                child: QuizActionButton(
-                  text: 'Yes',
-                  onPressed: () => _answerQuiz(true),
-                ),
-              ),
-              AppSpacing.horizontalGap12,
-              Expanded(
-                child: QuizActionButton(
-                  text: 'No',
-                  onPressed: () => _answerQuiz(false),
-                ),
-              ),
-            ],
-          ),
-
-        AppSpacing.verticalGap16,
-        // Score display
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.neutral100,
-            borderRadius: AppRadius.allPill,
-          ),
-          child: Text(
-            'Score: $_correctAnswers / ${quizQuestions.length}',
-            style: AppTypography.bodyB4.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCompletionCard() {
-    final passedQuiz = _correctAnswers >= quizQuestions.length;
-
+  Widget _buildBottomIndicator() {
     return Container(
-      padding: AppSpacing.all24,
-      decoration: BoxDecoration(
-        color: passedQuiz ? AppColors.successLight : AppColors.errorLight,
-        borderRadius: AppRadius.allXl,
-        border: Border.all(
-          color: passedQuiz ? AppColors.success : AppColors.error,
-          width: 2,
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: AppSpacing.all16,
+      height: 8,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          quizQuestions.length,
+          (index) => Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
-              color: passedQuiz ? AppColors.success : AppColors.error,
               shape: BoxShape.circle,
-            ),
-            child: Icon(
-              passedQuiz ? Icons.check : Icons.close,
-              color: AppColors.neutral0,
-              size: 32,
+              color: index == _currentQuestionIndex
+                  ? const Color(0xFF0A2C6B)
+                  : const Color(0xFFE0E0E0),
             ),
           ),
-          AppSpacing.verticalGap16,
-          Text(
-            passedQuiz ? 'Quiz Completed!' : 'Try Again',
-            style: AppTypography.headingH3.copyWith(
-              color: passedQuiz ? AppColors.success : AppColors.error,
-            ),
-          ),
-          AppSpacing.verticalGap12,
-          Text(
-            'Final Score: $_correctAnswers / ${quizQuestions.length}',
-            style: AppTypography.headingH5,
-          ),
-          AppSpacing.verticalGap8,
-          Text(
-            passedQuiz
-                ? 'You\'ve successfully completed the GDPR training!'
-                : 'Please review the material and try again.',
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyB3.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

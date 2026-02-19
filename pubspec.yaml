@@ -70,7 +70,17 @@ flutter:
   uses-material-design: true
 
   assets:
-       - assets/images/
+    - assets/images/
+    - assets/icons/
+    - assets/icons/CareKudos (5)/other-icons/
+    - assets/icons/CareKudos (11)/
+    - assets/icons/CareKudos (12)/
+    - assets/icons/CareKudos (13)/
+    - assets/icons/CareKudos (14)/
+    - assets/icons/CareKudos (15)/
+    - assets/icons/CareKudos (16)/
+    - assets/icons/CareKudos (17)/
+    - assets/icons/CareKudos (18)/
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

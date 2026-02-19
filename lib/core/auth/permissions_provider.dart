@@ -11,6 +11,7 @@ class UserProfile {
   final String lastName;
   final String role;
   final String? jobTitle;
+  final String? profilePictureUrl;
   final DateTime? createdAt;
   final int totalStars;
   final int starsThisMonth;
@@ -30,6 +31,7 @@ class UserProfile {
     required this.lastName,
     required this.role,
     this.jobTitle,
+    this.profilePictureUrl,
     this.createdAt,
     this.totalStars = 0,
     this.starsThisMonth = 0,
@@ -52,6 +54,7 @@ class UserProfile {
       lastName: data['lastName'] ?? '',
       role: data['role'] ?? 'care_worker',
       jobTitle: data['jobTitle'],
+      profilePictureUrl: data['profilePictureUrl'],
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : null,

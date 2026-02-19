@@ -16,6 +16,7 @@ import '../features/settings/help_support_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 import '../core/auth/auth_provider.dart';
 import '../core/auth/permissions_provider.dart';
+import '../core/services/storage_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateStream = ref.watch(authStateProvider.stream);
@@ -26,7 +27,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) async {
       final user = ref.read(authStateProvider).value;
       final isLoggedIn = user != null;
+      final hasSeenOnboarding = StorageService.hasCompletedOnboarding();
 
+      // If user is logged in
       if (isLoggedIn) {
         // Check if profile exists in Firestore
         final profile = await ref.read(userProfileProvider.future);
@@ -40,6 +43,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             (state.matchedLocation == '/welcome' ||
                 state.matchedLocation == '/login')) {
           return '/feed';
+        }
+      } else {
+        // User is NOT logged in
+        // If they haven't completed onboarding, show welcome screen
+        if (!hasSeenOnboarding && state.matchedLocation != '/welcome' && state.matchedLocation != '/onboarding') {
+          return '/welcome';
+        }
+        
+        // If they've completed onboarding but accessing welcome/onboarding, redirect to login
+        if (hasSeenOnboarding && (state.matchedLocation == '/welcome' || state.matchedLocation == '/onboarding')) {
+          return '/login';
+        }
+        
+        // If they're trying to access protected routes without login
+        if (state.matchedLocation == '/feed' || 
+            state.matchedLocation == '/profile' ||
+            state.matchedLocation.startsWith('/settings')) {
+          return hasSeenOnboarding ? '/login' : '/welcome';
         }
       }
       return null;

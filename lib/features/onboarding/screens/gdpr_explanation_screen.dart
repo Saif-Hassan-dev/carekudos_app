@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
-import '../../../core/widgets/custom_button.dart';
+import 'package:flutter/material.dart';
+import '../../../core/theme/theme.dart';
 
 class GdprExplanationScreen extends StatefulWidget {
   final VoidCallback onNext;
@@ -42,102 +42,118 @@ class _GdprExplanationScreenState extends State<GdprExplanationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const SizedBox(height: 40),
-
-            Column(
-              children: [
-                const Text(
-                  'Why we protect privacy',
-                  style: TextStyle(
-                    fontSize: 35,
-                    fontWeight: FontWeight.bold,
-                    color: Color.fromARGB(221, 0, 36, 243),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 40),
-
-                const Text(
-                  'We guide you to post safely.',
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 32),
-
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 5000),
-                  curve: Curves.easeInOut,
-                  width: 500,
-                  constraints: const BoxConstraints(
-                    minHeight: 100,
-                    minWidth: 200,
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _anonymized ? Colors.blue[50] : Colors.red[50],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 1200),
-                    switchInCurve: Curves.easeInOut,
-                    switchOutCurve: Curves.easeInOut,
-                    child: _anonymized
-                        ? const Column(
-                            key: ValueKey('safe'),
-                            children: [
-                              Text(
-                                'A gentleman enjoyed his walk',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.green,
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'Their room needed extra support',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.green,
-                                ),
-                              ),
-                            ],
-                          )
-                        : const Column(
-                            key: ValueKey('unsafe'),
-                            children: [
-                              Text(
-                                'Mr. Smith enjoyed his walk',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.red,
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'Room 12 needed extra support',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
+      backgroundColor: AppColors.neutral0,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Spacer(flex: 2),
+              
+              // Q&A Icon
+              SizedBox(
+                width: 200,
+                height: 200,
+                child: Image.asset(
+                  'assets/images/qna icon.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stack) => Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.neutral100,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: const Icon(Icons.quiz, size: 80, color: Colors.grey),
                   ),
                 ),
-              ],
-            ),
-
-            CustomButton(
-              text: 'I Understand',
-              onPressed: _canContinue ? widget.onNext : null,
-            ),
-          ],
+              ),
+              
+              const SizedBox(height: 40),
+              
+              // Title with colored word
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                    color: Color(0xFF0A2C6B), // Navy
+                  ),
+                  children: [
+                    const TextSpan(text: 'GDPR '),
+                    TextSpan(
+                      text: 'Training',
+                      style: TextStyle(
+                        color: const Color(0xFFD4AF37), // Gold
+                      ),
+                    ),
+                    const TextSpan(text: ' Check'),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Subtitle
+              Text(
+                'Complete the GDPR quiz to protect patient privacy and continue recognising colleagues on CareKudos safely platform.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: AppColors.neutral600,
+                ),
+              ),
+              
+              const Spacer(flex: 3),
+              
+              // Take The Quiz Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: widget.onNext,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0A2C6B), // Navy
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Take The Quiz',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.arrow_forward, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // Page Indicator
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.neutral300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );

@@ -94,36 +94,69 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         ),
       ],
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFF5F5F5),
         appBar: AppBar(
-          backgroundColor: AppColors.cardBackground,
+          backgroundColor: Colors.white,
           elevation: 0,
-          title: const AppLogo(size: LogoSize.lg, showText: true),
+          titleSpacing: 16,
+          title: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0A2C6B),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.favorite,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'CareKudos',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF212121),
+                ),
+              ),
+            ],
+          ),
           actions: [
-            // User greeting
-            userProfile.when(
-              data: (profile) => Padding(
-                padding: AppSpacing.horizontal8,
-                child: Center(
-                  child: Text(
-                    'Hi, ${profile?.firstName ?? user.email?.split('@')[0] ?? 'User'}',
-                    style: AppTypography.bodyB4.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: GestureDetector(
+                onTap: () => context.push('/profile'),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: const Color(0xFF0A2C6B),
+                  backgroundImage: userProfile.when(
+                    data: (profile) => profile?.profilePictureUrl != null && profile!.profilePictureUrl!.isNotEmpty
+                        ? NetworkImage(profile.profilePictureUrl!)
+                        : null,
+                    loading: () => null,
+                    error: (_, __) => null,
+                  ),
+                  child: userProfile.when(
+                    data: (profile) => profile?.profilePictureUrl == null || profile!.profilePictureUrl!.isEmpty
+                        ? Text(
+                            Formatters.getInitials(profile?.firstName ?? 'U'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        : null,
+                    loading: () => const Icon(Icons.person, color: Colors.white, size: 18),
+                    error: (_, __) => const Icon(Icons.person, color: Colors.white, size: 18),
                   ),
                 ),
               ),
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
             ),
-            IconButton(
-              icon: const Icon(Icons.logout_outlined, color: AppColors.textSecondary),
-              onPressed: () async {
-                await ref.read(authNotifierProvider.notifier).logout();
-                if (context.mounted) context.go('/welcome');
-              },
-            ),
-            AppSpacing.horizontalGap8,
           ],
         ),
         body: StreamBuilder<QuerySnapshot>(
@@ -150,9 +183,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             }
 
             return ListView.separated(
-              padding: AppSpacing.all16,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               itemCount: snapshot.data!.docs.length,
-              separatorBuilder: (_, __) => AppSpacing.verticalGap12,
+              separatorBuilder: (_, __) => const SizedBox(height: 0),
               itemBuilder: (context, index) {
                 final doc = snapshot.data!.docs[index];
                 final data = doc.data() as Map<String, dynamic>;
@@ -179,9 +212,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => context.push('/create-post'),
-          backgroundColor: AppColors.primary,
-          child: const Icon(Icons.add, color: AppColors.neutral0),
+          backgroundColor: const Color(0xFFFFB300),
+          elevation: 4,
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
         ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
     );
   }
@@ -282,139 +317,195 @@ class _PostCardState extends ConsumerState<PostCard> {
     final canGiveStars = ref.watch(canGiveStarsProvider);
     final multiplier = ref.watch(starMultiplierProvider);
 
-    return Card(
-      margin: EdgeInsets.zero,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: AppSpacing.all16,
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header row
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Profile picture
                 CircleAvatar(
-                  backgroundColor: AppColors.primaryLight,
+                  radius: 20,
+                  backgroundColor: const Color(0xFF0A2C6B),
                   child: Text(
                     Formatters.getInitials(widget.authorName),
-                    style: AppTypography.bodyB4.copyWith(
-                      color: AppColors.primary,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                AppSpacing.horizontalGap12,
+                const SizedBox(width: 12),
+                // Name, role, time
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Name
                       Text(
                         widget.authorName,
-                        style: AppTypography.bodyB3.copyWith(
+                        style: const TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          color: Color(0xFF212121),
                         ),
                       ),
-                      Text(
-                        Formatters.timeAgo(widget.createdAt),
-                        style: AppTypography.captionC1.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
+                      const SizedBox(height: 2),
+                      // Role and Category
+                      Row(
+                        children: [
+                          const Text(
+                            'Care Worker',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: Color(0xFF757575),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 3,
+                            height: 3,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF757575),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFE0B2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              widget.category,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFFE65100),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                // Star display
+                // Time
+                Text(
+                  Formatters.timeAgo(widget.createdAt),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF9E9E9E),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Content
+            Text(
+              widget.content,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF424242),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Read more link
+            GestureDetector(
+              onTap: () {
+                // TODO: Navigate to post detail
+              },
+              child: const Text(
+                'Read more',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF00BCD4),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Divider
+            Container(
+              height: 1,
+              color: const Color(0xFFEEEEEE),
+            ),
+            const SizedBox(height: 12),
+            // Bottom row: Star count and Give Star button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Star count
                 Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
                       Icons.star,
-                      color: AppColors.secondary,
-                      size: 18,
+                      color: Color(0xFFFFB300),
+                      size: 20,
                     ),
-                    AppSpacing.horizontalGap4,
+                    const SizedBox(width: 4),
                     Text(
-                      Formatters.formatStarCount(widget.stars),
-                      style: AppTypography.bodyB4.copyWith(
+                      '${widget.stars}',
+                      style: const TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: Color(0xFF212121),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-            AppSpacing.verticalGap12,
-            // Content
-            Text(
-              widget.content,
-              style: AppTypography.bodyB3.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            AppSpacing.verticalGap12,
-            // Category tag
-            _getCategoryTag(),
-            AppSpacing.verticalGap12,
-            // Actions row
-            Row(
-              children: [
-                // Star button
-                InkWell(
+                // Give Star button
+                GestureDetector(
                   onTap: (!canGiveStars || _isGivingStar)
                       ? null
                       : () => _hasGivenStar
                             ? _removeStar(multiplier)
                             : _giveStar(multiplier),
-                  borderRadius: AppRadius.allSm,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _hasGivenStar ? Icons.star : Icons.star_border,
-                          size: 20,
+                  child: Row(
+                    children: [
+                      Icon(
+                        _hasGivenStar ? Icons.star : Icons.star_border,
+                        size: 20,
+                        color: _hasGivenStar
+                            ? const Color(0xFFFFB300)
+                            : const Color(0xFF757575),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Give Star',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                           color: _hasGivenStar
-                              ? AppColors.secondary
-                              : AppColors.textTertiary,
+                              ? const Color(0xFFFFB300)
+                              : const Color(0xFF212121),
                         ),
-                        AppSpacing.horizontalGap4,
-                        Text(
-                          _hasGivenStar ? 'Starred' : 'Give Star',
-                          style: AppTypography.captionC1.copyWith(
-                            color: _hasGivenStar
-                                ? AppColors.secondary
-                                : AppColors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                AppSpacing.horizontalGap16,
-                // Comment button
-                InkWell(
-                  onTap: () {},
-                  borderRadius: AppRadius.allSm,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.chat_bubble_outline,
-                          size: 20,
-                          color: AppColors.textTertiary,
-                        ),
-                        AppSpacing.horizontalGap4,
-                        Text(
-                          'Comment',
-                          style: AppTypography.captionC1.copyWith(
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],

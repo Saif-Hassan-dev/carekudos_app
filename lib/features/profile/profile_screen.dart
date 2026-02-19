@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/auth/auth_notifier.dart';
 import '../../core/auth/permissions_provider.dart';
-import '../../core/theme/theme.dart';
-import '../../core/widgets/cards.dart';
-import '../../core/widgets/custom_button.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/utils/constants.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -17,17 +17,25 @@ class ProfileScreen extends ConsumerWidget {
     final userProfileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: AppColors.cardBackground,
+        backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF212121)),
+          onPressed: () => context.pop(),
+        ),
+        title: const Text(
           'Profile',
-          style: AppTypography.headingH5,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF212121),
+          ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(Icons.settings_outlined, color: Color(0xFF212121)),
             onPressed: () => context.push('/settings'),
           ),
         ],
@@ -38,14 +46,13 @@ class ProfileScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: AppColors.error),
-              AppSpacing.verticalGap16,
-              Text('Error loading profile', style: AppTypography.bodyB3),
-              AppSpacing.verticalGap8,
-              AppButton.secondary(
-                text: 'Retry',
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text('Error loading profile'),
+              const SizedBox(height: 8),
+              ElevatedButton(
                 onPressed: () => ref.invalidate(userProfileProvider),
-                isFullWidth: false,
+                child: const Text('Retry'),
               ),
             ],
           ),
@@ -56,99 +63,231 @@ class ProfileScreen extends ConsumerWidget {
           }
 
           return SingleChildScrollView(
-            padding: AppSpacing.all16,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Profile card
-                _ProfileHeader(
-                  name: profile.fullName,
-                  email: user?.email ?? '',
-                  role: profile.role,
-                  avatarUrl: '',
-                  starsReceived: profile.totalStars,
-                  starsGiven: profile.starsThisMonth,
-                ),
-                AppSpacing.verticalGap24,
-
-                // Stats section
-                Text(
-                  'Your Stats',
-                  style: AppTypography.headingH5,
-                ),
-                AppSpacing.verticalGap16,
-                Row(
-                  children: [
-                    Expanded(
-                      child: StatCard(
-                        value: profile.postCount.toString(),
-                        label: 'Posts',
-                        icon: Icons.article_outlined,
-                        color: AppColors.primary,
+                // Header Section
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                  child: Column(
+                    children: [
+                      // Profile Picture
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: const Color(0xFF0A2C6B),
+                        backgroundImage: profile.profilePictureUrl != null && profile.profilePictureUrl!.isNotEmpty
+                            ? NetworkImage(profile.profilePictureUrl!)
+                            : null,
+                        child: profile.profilePictureUrl == null || profile.profilePictureUrl!.isEmpty
+                            ? Text(
+                                Formatters.getInitials(profile.firstName),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            : null,
                       ),
-                    ),
-                    AppSpacing.horizontalGap12,
-                    Expanded(
-                      child: StatCard(
-                        value: profile.totalStars.toString(),
-                        label: 'Stars Received',
-                        icon: Icons.star,
-                        color: AppColors.secondary,
+                      const SizedBox(height: 16),
+                      // Name
+                      Text(
+                        profile.fullName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF212121),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                AppSpacing.verticalGap12,
-                Row(
-                  children: [
-                    Expanded(
-                      child: StatCard(
-                        value: profile.starsThisMonth.toString(),
-                        label: 'Stars Given',
-                        icon: Icons.star_border,
-                        color: AppColors.tertiary,
+                      const SizedBox(height: 4),
+                      // Role
+                      Text(
+                        _formatRole(profile.role),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF757575),
+                        ),
                       ),
-                    ),
-                    AppSpacing.horizontalGap12,
-                    Expanded(
-                      child: StatCard(
-                        value: _getLevelName(profile.totalStars),
-                        label: 'Level',
-                        icon: Icons.emoji_events_outlined,
-                        color: AppColors.success,
+                      const SizedBox(height: 2),
+                      // Email
+                      Text(
+                        user?.email ?? '',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF9E9E9E),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+                      // Stats Cards
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              icon: Icons.star,
+                              iconColor: const Color(0xFFFFB300),
+                              value: '${profile.totalStars}',
+                              label: 'Stars Received',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildStatCard(
+                              icon: Icons.create,
+                              iconColor: const Color(0xFF0A2C6B),
+                              value: '${profile.postCount}',
+                              label: 'Posts made',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              icon: Icons.star_border,
+                              iconColor: const Color(0xFF00BCD4),
+                              value: '${profile.starsThisMonth}',
+                              label: 'Stars given',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection(AppConstants.postsCollection)
+                                  .where('authorId', isEqualTo: profile.uid)
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                int totalPosts = 0;
+                                if (snapshot.hasData) {
+                                  totalPosts = snapshot.data!.docs.length;
+                                }
+                                final qualityScore = totalPosts > 0 
+                                    ? ((profile.totalStars / totalPosts) * 100).round() 
+                                    : 85;
+                                return _buildStatCard(
+                                  icon: Icons.verified,
+                                  iconColor: const Color(0xFF4CAF50),
+                                  value: '$qualityScore%',
+                                  label: 'Quality score',
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // Recognition Message
+                      const Text(
+                        'You are recognized for these traits',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF757575),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Trait Badges
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildTraitBadge('Compassion', const Color(0xFFFFCDD2)),
+                          _buildTraitBadge('Teamwork', const Color(0xFFBBDEFB)),
+                          _buildTraitBadge('Excellence', const Color(0xFFC8E6C9)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                AppSpacing.verticalGap24,
+                const SizedBox(height: 12),
+                // Additional Information Section
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Additional Information',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF212121),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildInfoRow(Icons.phone_outlined, 'Phone number', 'Not provided'),
+                      const SizedBox(height: 12),
+                      _buildInfoRow(Icons.location_on_outlined, 'Address', 'SW1A 1AA'),
+                      const SizedBox(height: 12),
+                      _buildInfoRow(Icons.badge_outlined, 'Emergency contact', 'Not provided'),
+                      const SizedBox(height: 12),
+                      _buildInfoRow(Icons.phone_outlined, 'Professional reg. number', 'Not provided'),
+                      const SizedBox(height: 12),
+                      _buildInfoRow(Icons.email_outlined, 'Preferred contact method', 'Email'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // My Posts Section
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'My Posts',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF212121),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection(AppConstants.postsCollection)
+                            .where('authorId', isEqualTo: profile.uid)
+                            .orderBy('createdAt', descending: true)
+                            .limit(3)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                            return const Text(
+                              'No posts yet',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF757575),
+                              ),
+                            );
+                          }
 
-                // Achievements section
-                _SectionHeader(
-                  title: 'Achievements',
-                  onSeeAll: () {},
+                          return Column(
+                            children: snapshot.data!.docs.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              return _buildPostItem(
+                                profile: profile,
+                                content: data['content'] ?? '',
+                                category: data['category'] ?? 'General',
+                                stars: data['stars'] ?? 0,
+                                createdAt: data['createdAt'] != null
+                                    ? (data['createdAt'] as Timestamp).toDate()
+                                    : DateTime.now(),
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-                AppSpacing.verticalGap12,
-                _AchievementsGrid(),
-                AppSpacing.verticalGap24,
-
-                // Recent activity section
-                _SectionHeader(
-                  title: 'Recent Activity',
-                  onSeeAll: () {},
-                ),
-                AppSpacing.verticalGap12,
-                _RecentActivityList(),
-                AppSpacing.verticalGap32,
-
-                // Logout button
-                AppButton.text(
-                  text: 'Sign Out',
-                  onPressed: () async {
-                    await ref.read(authNotifierProvider.notifier).logout();
-                    if (context.mounted) context.go('/welcome');
-                  },
-                  isFullWidth: true,
-                ),
-                AppSpacing.verticalGap16,
+                const SizedBox(height: 100),
               ],
             ),
           );
@@ -157,118 +296,233 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  String _getLevelName(int level) {
-    switch (level) {
-      case 1:
-        return 'Starter';
-      case 2:
-        return 'Rising';
-      case 3:
-        return 'Star';
-      case 4:
-        return 'Champion';
-      case 5:
-        return 'Legend';
-      default:
-        return 'Level $level';
-    }
+  Widget _buildStatCard({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: iconColor, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF212121),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF757575),
+            ),
+          ),
+        ],
+      ),
+    );
   }
-}
 
-class _ProfileHeader extends StatelessWidget {
-  final String name;
-  final String email;
-  final String role;
-  final String avatarUrl;
-  final int starsReceived;
-  final int starsGiven;
-
-  const _ProfileHeader({
-    required this.name,
-    required this.email,
-    required this.role,
-    required this.avatarUrl,
-    required this.starsReceived,
-    required this.starsGiven,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: AppSpacing.all20,
-        child: Column(
-          children: [
-            // Avatar
-            CircleAvatar(
-              radius: 48,
-              backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-              backgroundColor: AppColors.primaryLight,
-              child: avatarUrl.isEmpty
-                  ? Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: AppTypography.displayD2.copyWith(
-                        color: AppColors.primary,
-                      ),
-                    )
-                  : null,
-            ),
-            AppSpacing.verticalGap16,
-            Text(
-              name,
-              style: AppTypography.headingH4,
-              textAlign: TextAlign.center,
-            ),
-            AppSpacing.verticalGap4,
-            Text(
-              email,
-              style: AppTypography.bodyB4.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            AppSpacing.verticalGap8,
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: AppRadius.allPill,
-              ),
-              child: Text(
-                _formatRole(role),
-                style: AppTypography.captionC1.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            AppSpacing.verticalGap20,
-            // Star stats
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _StarStat(
-                  icon: Icons.star,
-                  value: starsReceived,
-                  label: 'Received',
-                  color: AppColors.secondary,
-                ),
-                Container(
-                  height: 40,
-                  width: 1,
-                  margin: AppSpacing.horizontal24,
-                  color: AppColors.divider,
-                ),
-                _StarStat(
-                  icon: Icons.star_border,
-                  value: starsGiven,
-                  label: 'Given',
-                  color: AppColors.primary,
-                ),
-              ],
-            ),
-          ],
+  Widget _buildTraitBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF212121),
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: const Color(0xFF757575)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF212121),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF757575),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPostItem({
+    required UserProfile profile,
+    required String content,
+    required String category,
+    required int stars,
+    required DateTime createdAt,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: const Color(0xFF0A2C6B),
+                backgroundImage: profile.profilePictureUrl != null && profile.profilePictureUrl!.isNotEmpty
+                    ? NetworkImage(profile.profilePictureUrl!)
+                    : null,
+                child: profile.profilePictureUrl == null || profile.profilePictureUrl!.isEmpty
+                    ? Text(
+                        Formatters.getInitials(profile.firstName),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile.fullName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF212121),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          _formatRole(profile.role),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF757575),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 3,
+                          height: 3,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF757575),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFE0B2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            category,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFFE65100),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                Formatters.timeAgo(createdAt),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF9E9E9E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            content,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF424242),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Read more',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF00BCD4),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.star, color: Color(0xFFFFB300), size: 16),
+              const SizedBox(width: 4),
+              Text(
+                '$stars',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF212121),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: 1,
+            color: const Color(0xFFEEEEEE),
+          ),
+        ],
       ),
     );
   }
@@ -281,175 +535,5 @@ class _ProfileHeader extends StatelessWidget {
             ? '${word[0].toUpperCase()}${word.substring(1)}'
             : '')
         .join(' ');
-  }
-}
-
-class _StarStat extends StatelessWidget {
-  final IconData icon;
-  final int value;
-  final String label;
-  final Color color;
-
-  const _StarStat({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 24),
-            AppSpacing.horizontalGap4,
-            Text(
-              value.toString(),
-              style: AppTypography.headingH4,
-            ),
-          ],
-        ),
-        AppSpacing.verticalGap4,
-        Text(
-          label,
-          style: AppTypography.captionC1.copyWith(
-            color: AppColors.textTertiary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final VoidCallback? onSeeAll;
-
-  const _SectionHeader({
-    required this.title,
-    this.onSeeAll,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title, style: AppTypography.headingH5),
-        if (onSeeAll != null)
-          TextButton(
-            onPressed: onSeeAll,
-            child: Text(
-              'See All',
-              style: AppTypography.bodyB4.copyWith(
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _AchievementsGrid extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // Placeholder achievements
-    final achievements = [
-      {'icon': Icons.celebration, 'label': 'First Star', 'unlocked': true},
-      {'icon': Icons.local_fire_department, 'label': '5 Day Streak', 'unlocked': true},
-      {'icon': Icons.favorite, 'label': 'Compassion Pro', 'unlocked': false},
-      {'icon': Icons.groups, 'label': 'Team Player', 'unlocked': false},
-    ];
-
-    return SizedBox(
-      height: 100,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: achievements.length,
-        separatorBuilder: (_, __) => AppSpacing.horizontalGap12,
-        itemBuilder: (context, index) {
-          final achievement = achievements[index];
-          final unlocked = achievement['unlocked'] as bool;
-          return _AchievementBadge(
-            icon: achievement['icon'] as IconData,
-            label: achievement['label'] as String,
-            unlocked: unlocked,
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _AchievementBadge extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool unlocked;
-
-  const _AchievementBadge({
-    required this.icon,
-    required this.label,
-    required this.unlocked,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: unlocked ? AppColors.secondaryLight : AppColors.neutral200,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: unlocked ? AppColors.secondary : AppColors.textTertiary,
-            size: 28,
-          ),
-        ),
-        AppSpacing.verticalGap8,
-        Text(
-          label,
-          style: AppTypography.captionC2.copyWith(
-            color: unlocked ? AppColors.textPrimary : AppColors.textTertiary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-}
-
-class _RecentActivityList extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // Placeholder activities
-    return Column(
-      children: [
-        NotificationCard(
-          title: 'You received a star!',
-          subtitle: 'For showing compassion',
-          timeAgo: '2h ago',
-          icon: Icons.star,
-          iconColor: AppColors.secondary,
-          iconBgColor: AppColors.secondaryLight,
-        ),
-        AppSpacing.verticalGap8,
-        NotificationCard(
-          title: 'Post approved',
-          subtitle: 'Your post is now visible',
-          timeAgo: '1d ago',
-          icon: Icons.check_circle,
-          iconColor: AppColors.success,
-          iconBgColor: AppColors.successLight,
-        ),
-      ],
-    );
   }
 }

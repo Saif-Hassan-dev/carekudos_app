@@ -4,6 +4,7 @@ import '../../../core/providers/onboarding_provider.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/cards.dart';
+import '../../../core/constants/app_icons.dart';
 
 class RoleSelectionScreen extends ConsumerStatefulWidget {
   final VoidCallback onNext;
@@ -31,19 +32,41 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
     }
   }
 
-  IconData _getRoleIcon(String roleId) {
+  Widget _getRoleIconWidget(String roleId) {
+    String? iconPath;
+    IconData fallbackIcon;
+    
     switch (roleId) {
       case 'care_worker':
-        return Icons.volunteer_activism_outlined;
       case 'senior_carer':
-        return Icons.supervisor_account_outlined;
+        iconPath = AppIcons.careWorker;
+        fallbackIcon = Icons.volunteer_activism_outlined;
+        break;
       case 'manager':
-        return Icons.admin_panel_settings_outlined;
+        iconPath = AppIcons.manager;
+        fallbackIcon = Icons.admin_panel_settings_outlined;
+        break;
       case 'family_member':
-        return Icons.family_restroom_outlined;
+        fallbackIcon = Icons.family_restroom_outlined;
+        break;
       default:
-        return Icons.person_outline;
+        fallbackIcon = Icons.person_outline;
     }
+
+    // Try to load custom icon, fallback to Material icon
+    if (iconPath != null) {
+      return Image.asset(
+        iconPath,
+        width: 24,
+        height: 24,
+        color: Colors.white,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(fallbackIcon, size: 24);
+        },
+      );
+    }
+    
+    return Icon(fallbackIcon, size: 24);
   }
 
   String _getRoleDescription(String roleId) {
@@ -100,11 +123,20 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                   itemBuilder: (context, index) {
                     final role = roles[index];
                     final roleId = role['id']!;
+                    final isSelected = _selectedRole == roleId;
+                    
                     return SelectionCard(
                       title: role['label']!,
                       description: _getRoleDescription(roleId),
-                      icon: _getRoleIcon(roleId),
-                      isSelected: _selectedRole == roleId,
+                      leading: Container(
+                        padding: AppSpacing.all12,
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary : AppColors.neutral100,
+                          borderRadius: AppRadius.allLg,
+                        ),
+                        child: _getRoleIconWidget(roleId),
+                      ),
+                      isSelected: isSelected,
                       onTap: () => setState(() => _selectedRole = roleId),
                     );
                   },
