@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function: Check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Helper function: Check if user owns the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone authenticated can read any user profile
+      allow read: if isSignedIn();
+      
+      // Only the user can create their own profile
+      allow create: if isSignedIn() && isOwner(userId);
+      
+      // Owner can update anything; others can only increment star fields
+      allow update: if isSignedIn() 
+                    && (isOwner(userId)
+                        || request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['totalStars', 'starsThisMonth']));
+      
+      // Users cannot delete their profile
+      allow delete: if false;
+    }
+    
+    // Posts collection
+    match /posts/{postId} {
+      // Anyone authenticated can read posts
+      allow read: if isSignedIn();
+      
+      // Only authenticated users can create posts
+      // Must include authorId matching their user ID
+      allow create: if isSignedIn() 
+                    && request.resource.data.authorId == request.auth.uid;
+      
+      // Author can update anything; others can only update stars/starredBy
+      allow update: if isSignedIn() 
+                    && (resource.data.authorId == request.auth.uid
+                        || request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['stars', 'starredBy']));
+      
+      // Only post author can delete their posts
+      allow delete: if isSignedIn() 
+                    && resource.data.authorId == request.auth.uid;
+      
+      // Subcollection: Stars given to posts
+      match /starredBy/{userId} {
+        // Anyone can read who starred a post
+        allow read: if isSignedIn();
+        
+        // Only the user can star a post (create star document)
+        allow create: if isSignedIn() && userId == request.auth.uid;
+        
+        // Users can remove their own stars
+        allow delete: if isSignedIn() && userId == request.auth.uid;
+      }
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isSignedIn() 
+                  && resource.data.userId == request.auth.uid;
+      
+      // System can create notifications for users
+      allow create: if isSignedIn();
+      
+      // Users can update their own notifications (e.g., mark as read)
+      allow update: if isSignedIn() 
+                    && resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own notifications
+      allow delete: if isSignedIn() 
+                    && resource.data.userId == request.auth.uid;
+    }
+    
+    // Comments collection (future use)
+    match /comments/{commentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() 
+                    && resource.data.authorId == request.auth.uid;
+      allow delete: if isSignedIn() 
+                    && resource.data.authorId == request.auth.uid;
+    }
+    
+    // Achievements collection (future use)
+    match /achievements/{achievementId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only admin/system can write
+    }
+    
+    // Organizations collection (for future use)
+    match /organizations/{orgId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only admins via backend
+    }
+  }
+}

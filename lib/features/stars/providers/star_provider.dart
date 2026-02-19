@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/utils/constants.dart';
+import '../../../core/services/notification_service.dart';
 
 // Provider to give stars to a post
 final starPostProvider = Provider((ref) => StarService());
@@ -10,6 +11,9 @@ class StarService {
     required String postId,
     required String postAuthorId,
     required double multiplier,
+    String? giverName,
+    String? giverId,
+    String? category,
   }) async {
     final batch = FirebaseFirestore.instance.batch();
 

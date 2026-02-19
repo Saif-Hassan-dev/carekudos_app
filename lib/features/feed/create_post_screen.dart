@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../post/screens/post_preview_screen.dart';
+import '../../core/services/storage_service.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
@@ -28,6 +29,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   GdprStatus _gdprStatus = GdprStatus.warning;
   List<String> _gdprIssues = [];
   bool _isSubmitting = false;
+  bool _hasDraft = false;
 
   final categories = AppConstants.postCategories;
 
@@ -35,6 +37,61 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   void initState() {
     super.initState();
     _contentController.addListener(_checkGdpr);
+    _checkForDraft();
+  }
+
+  void _checkForDraft() {
+    setState(() {
+      _hasDraft = StorageService.hasDraft();
+    });
+  }
+
+  Future<void> _loadDraft() async {
+    final draft = StorageService.getDraft();
+    if (draft != null) {
+      setState(() {
+        _contentController.text = draft['content'] ?? '';
+        _selectedCategory = draft['category'] ?? 'Teamwork';
+        _selectedVisibility = draft['visibility'] ?? 'team';
+        _hasDraft = false; // Hide the banner after loading
+      });
+      
+      if (mounted) {
+        context.showSnackBar('📝 Draft restored');
+      }
+    }
+  }
+
+  Future<void> _discardDraft() async {
+    await StorageService.clearDraft();
+    setState(() {
+      _hasDraft = false;
+    });
+    
+    if (mounted) {
+      context.showSnackBar('🗑️ Draft discarded');
+    }
+  }
+
+  Future<void> _saveDraft() async {
+    if (_contentController.text.trim().isEmpty) {
+      context.showErrorSnackBar('Nothing to save');
+      return;
+    }
+
+    await StorageService.saveDraft(
+      content: _contentController.text,
+      category: _selectedCategory,
+      visibility: _selectedVisibility,
+    );
+
+    setState(() {
+      _hasDraft = true;
+    });
+
+    if (mounted) {
+      context.showSnackBar('💾 Draft saved');
+    }
   }
 
   @override
@@ -83,6 +140,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           .add({
             'authorId': user.uid,
             'authorName': userProfile.fullName,
+            'authorRole': userProfile.role,
             'content': _contentController.text,
             'category': _selectedCategory,
             'stars': 0,
@@ -106,7 +164,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             'lastPostDate': FieldValue.serverTimestamp(),
           });
 
+      // Clear draft after successful post
+      await StorageService.clearDraft();
+      
       if (mounted) {
+        setState(() => _hasDraft = false);
         context.showSnackBar('✅ Post created successfully!');
         context.pop();
       }
@@ -119,20 +181,31 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.cardBackground,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.textPrimary),
-          onPressed: () => context.pop(),
-        ),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        await _handleBackButton();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.cardBackground,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: AppColors.textPrimary),
+            onPressed: _handleBackButton,
+          ),
         title: Text(
           'Share Achievement',
           style: AppTypography.headingH5,
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.save_outlined, color: AppColors.textSecondary),
+            onPressed: _saveDraft,
+            tooltip: 'Save Draft',
+          ),
           Padding(
             padding: AppSpacing.horizontal16,
             child: AppButton.text(
@@ -158,6 +231,50 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 color: AppColors.textSecondary,
               ),
             ),
+            if (_hasDraft) ...[
+              AppSpacing.verticalGap16,
+              Container(
+                padding: AppSpacing.all12,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: AppRadius.allLg,
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.drafts, color: AppColors.primary, size: 20),
+                    AppSpacing.horizontalGap12,
+                    Expanded(
+                      child: Text(
+                        'You have a saved draft',
+                        style: AppTypography.bodyB3.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _loadDraft,
+                      child: Text(
+                        'Restore',
+                        style: AppTypography.actionA2.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _discardDraft,
+                      child: Text(
+                        'Discard',
+                        style: AppTypography.actionA2.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             AppSpacing.verticalGap20,
             // Content text field
             Container(
@@ -257,7 +374,39 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           ],
         ),
       ),
+      ), // PopScope
     );
+  }
+
+  Future<void> _handleBackButton() async {
+    // If there's content but it's not saved, prompt to save as draft
+    if (_contentController.text.trim().isNotEmpty && !_hasDraft) {
+      final shouldSave = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Save Draft?'),
+          content: const Text('Would you like to save your progress as a draft?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Discard'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldSave == true) {
+        await _saveDraft();
+      }
+    }
+
+    if (mounted) {
+      context.pop();
+    }
   }
 
   void _showPreview() {

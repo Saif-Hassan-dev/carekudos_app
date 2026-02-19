@@ -221,9 +221,9 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildInfoRow(Icons.phone_outlined, 'Phone number', 'Not provided'),
+                      _buildInfoRow(Icons.phone_outlined, 'Phone number', profile.phone ?? 'Not provided'),
                       const SizedBox(height: 12),
-                      _buildInfoRow(Icons.location_on_outlined, 'Address', 'SW1A 1AA'),
+                      _buildInfoRow(Icons.location_on_outlined, 'Address', profile.postcode ?? 'Not provided'),
                       const SizedBox(height: 12),
                       _buildInfoRow(Icons.badge_outlined, 'Emergency contact', 'Not provided'),
                       const SizedBox(height: 12),
@@ -254,10 +254,28 @@ class ProfileScreen extends ConsumerWidget {
                         stream: FirebaseFirestore.instance
                             .collection(AppConstants.postsCollection)
                             .where('authorId', isEqualTo: profile.uid)
-                            .orderBy('createdAt', descending: true)
                             .limit(3)
                             .snapshots(),
                         builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          }
+                          
+                          if (snapshot.hasError) {
+                            return Text(
+                              'Error loading posts: ${snapshot.error}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFFE65100),
+                              ),
+                            );
+                          }
+                          
                           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                             return const Text(
                               'No posts yet',
@@ -268,8 +286,21 @@ class ProfileScreen extends ConsumerWidget {
                             );
                           }
 
+                          // Sort posts by createdAt in descending order
+                          final posts = snapshot.data!.docs.toList();
+                          posts.sort((a, b) {
+                            final aData = a.data() as Map<String, dynamic>;
+                            final bData = b.data() as Map<String, dynamic>;
+                            final aTime = aData['createdAt'] as Timestamp?;
+                            final bTime = bData['createdAt'] as Timestamp?;
+                            if (aTime == null && bTime == null) return 0;
+                            if (aTime == null) return 1;
+                            if (bTime == null) return -1;
+                            return bTime.compareTo(aTime);
+                          });
+
                           return Column(
-                            children: snapshot.data!.docs.map((doc) {
+                            children: posts.map((doc) {
                               final data = doc.data() as Map<String, dynamic>;
                               return _buildPostItem(
                                 profile: profile,

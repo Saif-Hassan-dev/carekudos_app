@@ -97,6 +97,10 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         lastName: _lastNameController.text.trim(),
         role: onboardingData.selectedRole ?? 'care_worker',
         jobTitle: '', // Can be set later
+        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
+        postcode: _postcodeController.text.trim().isNotEmpty ? _postcodeController.text.trim() : null,
+        organizationId: _orgCodeController.text.trim().isNotEmpty ? _orgCodeController.text.trim() : null,
+        gdprConsent: _agreeToGdpr,
       );
 
       // Clear onboarding state

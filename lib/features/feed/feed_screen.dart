@@ -19,6 +19,7 @@ import '../../core/widgets/cards.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/widgets/app_bottom_nav.dart';
 import '../../core/widgets/app_logo.dart';
+import '../../core/providers/notification_provider.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -101,18 +102,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           titleSpacing: 16,
           title: Row(
             children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0A2C6B),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(
-                  Icons.favorite,
-                  color: Colors.white,
-                  size: 16,
-                ),
+              Image.asset(
+                'assets/images/smallLogo.png',
+                height: 32,
+                fit: BoxFit.contain,
               ),
               const SizedBox(width: 8),
               const Text(
@@ -194,6 +187,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                   postId: doc.id,
                   authorId: data['authorId'] ?? '',
                   authorName: data['authorName'] ?? 'Anonymous',
+                  authorRole: data['authorRole'] ?? 'care_worker',
                   content: data['content'] ?? '',
                   category: data['category'] ?? 'General',
                   stars: data['stars'] ?? 0,
@@ -208,7 +202,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         bottomNavigationBar: AppBottomNav(
           currentIndex: _currentNavIndex,
           onTap: _onNavTap,
-          notificationCount: 0,
+          notificationCount: ref.watch(unreadNotificationCountProvider).value ?? 0,
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => context.push('/create-post'),
@@ -241,6 +235,7 @@ class PostCard extends ConsumerStatefulWidget {
   final String postId;
   final String authorId;
   final String authorName;
+  final String authorRole;
   final String content;
   final String category;
   final int stars;
@@ -251,6 +246,7 @@ class PostCard extends ConsumerStatefulWidget {
     required this.postId,
     required this.authorId,
     required this.authorName,
+    required this.authorRole,
     required this.content,
     required this.category,
     required this.stars,
@@ -371,9 +367,9 @@ class _PostCardState extends ConsumerState<PostCard> {
                       // Role and Category
                       Row(
                         children: [
-                          const Text(
-                            'Care Worker',
-                            style: TextStyle(
+                          Text(
+                            _formatRole(widget.authorRole),
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w400,
                               color: Color(0xFF757575),
@@ -434,21 +430,23 @@ class _PostCardState extends ConsumerState<PostCard> {
               ),
             ),
             const SizedBox(height: 8),
-            // Read more link
-            GestureDetector(
-              onTap: () {
-                // TODO: Navigate to post detail
-              },
-              child: const Text(
-                'Read more',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF00BCD4),
+            // Read more link - only show if content is long enough
+            if (widget.content.length > 150)
+              GestureDetector(
+                onTap: () {
+                  // TODO: Navigate to post detail
+                },
+                child: const Text(
+                  'Read more',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF00BCD4),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
+            if (widget.content.length > 150) const SizedBox(height: 16),
+            if (widget.content.length <= 150) const SizedBox(height: 8),
             // Divider
             Container(
               height: 1,
@@ -524,11 +522,15 @@ class _PostCardState extends ConsumerState<PostCard> {
 
     try {
       final starService = ref.read(starPostProvider);
+      final currentUserProfile = ref.read(userProfileProvider).value;
 
       await starService.giveStarToPost(
         postId: widget.postId,
         postAuthorId: widget.authorId,
         multiplier: multiplier.toDouble(),
+        giverName: currentUserProfile?.fullName,
+        giverId: currentUser.uid,
+        category: widget.category,
       );
 
       await FirebaseFirestore.instance
@@ -590,5 +592,15 @@ class _PostCardState extends ConsumerState<PostCard> {
         setState(() => _isGivingStar = false);
       }
     }
+  }
+
+  String _formatRole(String role) {
+    return role
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isNotEmpty
+            ? '${word[0].toUpperCase()}${word.substring(1)}'
+            : '')
+        .join(' ');
   }
 }

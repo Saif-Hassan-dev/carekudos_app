@@ -11,6 +11,8 @@ class UserProfile {
   final String lastName;
   final String role;
   final String? jobTitle;
+  final String? phone;
+  final String? postcode;
   final String? profilePictureUrl;
   final DateTime? createdAt;
   final int totalStars;
@@ -31,6 +33,8 @@ class UserProfile {
     required this.lastName,
     required this.role,
     this.jobTitle,
+    this.phone,
+    this.postcode,
     this.profilePictureUrl,
     this.createdAt,
     this.totalStars = 0,
@@ -54,6 +58,8 @@ class UserProfile {
       lastName: data['lastName'] ?? '',
       role: data['role'] ?? 'care_worker',
       jobTitle: data['jobTitle'],
+      phone: data['phone'],
+      postcode: data['postcode'],
       profilePictureUrl: data['profilePictureUrl'],
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()

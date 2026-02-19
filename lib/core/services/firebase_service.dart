@@ -29,8 +29,11 @@ class FirebaseService {
     required String lastName,
     required String role,
     String? jobTitle,
+    String? phone,
+    String? postcode,
     String? organizationId,
     String? teamId,
+    bool gdprConsent = false,
   }) async {
     try {
       await _db.collection('users').doc(userId).set({
@@ -39,6 +42,8 @@ class FirebaseService {
         'lastName': lastName,
         'role': role,
         'jobTitle': jobTitle,
+        'phone': phone,
+        'postcode': postcode,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         //stars
@@ -52,9 +57,9 @@ class FirebaseService {
         'teamId': teamId,
         'managerIds': [],
 
-        // GDPR consent (initially false, set during onboarding)
-        'gdprConsentGiven': false,
-        'gdprConsentTimestamp': null,
+        // GDPR consent
+        'gdprConsentGiven': gdprConsent,
+        'gdprConsentTimestamp': gdprConsent ? FieldValue.serverTimestamp() : null,
       });
     } catch (e) {
       throw Exception('Failed to create user profile: $e');
