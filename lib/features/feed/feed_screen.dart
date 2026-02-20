@@ -20,6 +20,7 @@ import '../../core/widgets/custom_text_field.dart';
 import '../../core/widgets/app_bottom_nav.dart';
 import '../../core/widgets/app_logo.dart';
 import '../../core/providers/notification_provider.dart';
+import '../../core/services/notification_service.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -30,21 +31,15 @@ class FeedScreen extends ConsumerStatefulWidget {
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   int _currentNavIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-  }
+  bool _showSuccessBanner = false;
 
   void _onNavTap(int index) {
     if (index == 1) {
-      // Create tab - go to create post
-      context.push('/create-post');
+      _navigateToCreatePost();
+      return;
     } else if (index == 2) {
-      // Alerts - show notifications
       context.push('/notifications');
     } else if (index == 3) {
-      // Profile
       context.push('/profile');
     } else {
       setState(() => _currentNavIndex = index);
@@ -95,131 +90,210 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         ),
       ],
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          titleSpacing: 16,
-          title: Row(
+        backgroundColor: const Color(0xFFF8F8F8),
+        body: SafeArea(
+          child: Column(
             children: [
-              Image.asset(
-                'assets/images/smallLogo.png',
-                height: 32,
-                fit: BoxFit.contain,
+              // ── App Bar ──
+              Container(
+                color: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/images/smallLogo.png',
+                      height: 28,
+                      width: 28,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'CareKudos',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A2E),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => context.push('/profile'),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF0A2C6B),
+                          image: userProfile.when(
+                            data: (profile) =>
+                                profile?.profilePictureUrl != null &&
+                                        profile!.profilePictureUrl!.isNotEmpty
+                                    ? DecorationImage(
+                                        image: NetworkImage(
+                                            profile.profilePictureUrl!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                            loading: () => null,
+                            error: (_, __) => null,
+                          ),
+                        ),
+                        child: userProfile.when(
+                          data: (profile) =>
+                              profile?.profilePictureUrl == null ||
+                                      profile!.profilePictureUrl!.isEmpty
+                                  ? Center(
+                                      child: Text(
+                                        Formatters.getInitials(
+                                            profile?.firstName ?? 'U'),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                          loading: () => const Icon(Icons.person,
+                              color: Colors.white, size: 18),
+                          error: (_, __) => const Icon(Icons.person,
+                              color: Colors.white, size: 18),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 8),
-              const Text(
-                'CareKudos',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF212121),
+
+              // ── Success Banner ──
+              if (_showSuccessBanner)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF81C784)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 22,
+                        height: 22,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4CAF50),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check, color: Colors.white, size: 14),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Your recognition has been shared',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // ── Feed List ──
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection(AppConstants.postsCollection)
+                      .orderBy('createdAt', descending: true)
+                      .limit(50)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const LoadingView(message: 'Loading feed...');
+                    }
+
+                    if (snapshot.hasError) {
+                      return ErrorView(
+                        title: 'Error Loading Feed',
+                        message:
+                            ErrorHandler.getGenericErrorMessage(snapshot.error),
+                        onRetry: () => setState(() {}),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return _buildEmptyState(context);
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index) {
+                        final doc = snapshot.data!.docs[index];
+                        final data = doc.data() as Map<String, dynamic>;
+
+                        return _PostCard(
+                          postId: doc.id,
+                          authorId: data['authorId'] ?? '',
+                          authorName: data['authorName'] ?? 'Anonymous',
+                          authorRole: data['authorRole'] ?? 'care_worker',
+                          content: data['content'] ?? '',
+                          category: data['category'] ?? 'General',
+                          stars: data['stars'] ?? 0,
+                          createdAt: data['createdAt'] != null
+                              ? (data['createdAt'] as Timestamp).toDate()
+                              : DateTime.now(),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],
           ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: GestureDetector(
-                onTap: () => context.push('/profile'),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: const Color(0xFF0A2C6B),
-                  backgroundImage: userProfile.when(
-                    data: (profile) => profile?.profilePictureUrl != null && profile!.profilePictureUrl!.isNotEmpty
-                        ? NetworkImage(profile.profilePictureUrl!)
-                        : null,
-                    loading: () => null,
-                    error: (_, __) => null,
-                  ),
-                  child: userProfile.when(
-                    data: (profile) => profile?.profilePictureUrl == null || profile!.profilePictureUrl!.isEmpty
-                        ? Text(
-                            Formatters.getInitials(profile?.firstName ?? 'U'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          )
-                        : null,
-                    loading: () => const Icon(Icons.person, color: Colors.white, size: 18),
-                    error: (_, __) => const Icon(Icons.person, color: Colors.white, size: 18),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        body: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection(AppConstants.postsCollection)
-              .orderBy('createdAt', descending: true)
-              .limit(50)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const LoadingView(message: 'Loading feed...');
-            }
-
-            if (snapshot.hasError) {
-              return ErrorView(
-                title: 'Error Loading Feed',
-                message: ErrorHandler.getGenericErrorMessage(snapshot.error),
-                onRetry: () => setState(() {}),
-              );
-            }
-
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return _buildEmptyState(context);
-            }
-
-            return ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: snapshot.data!.docs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 0),
-              itemBuilder: (context, index) {
-                final doc = snapshot.data!.docs[index];
-                final data = doc.data() as Map<String, dynamic>;
-
-                return PostCard(
-                  postId: doc.id,
-                  authorId: data['authorId'] ?? '',
-                  authorName: data['authorName'] ?? 'Anonymous',
-                  authorRole: data['authorRole'] ?? 'care_worker',
-                  content: data['content'] ?? '',
-                  category: data['category'] ?? 'General',
-                  stars: data['stars'] ?? 0,
-                  createdAt: data['createdAt'] != null
-                      ? (data['createdAt'] as Timestamp).toDate()
-                      : DateTime.now(),
-                );
-              },
-            );
-          },
         ),
         bottomNavigationBar: AppBottomNav(
           currentIndex: _currentNavIndex,
           onTap: _onNavTap,
-          notificationCount: ref.watch(unreadNotificationCountProvider).value ?? 0,
+          notificationCount:
+              ref.watch(unreadNotificationCountProvider).value ?? 0,
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => context.push('/create-post'),
-          backgroundColor: const Color(0xFFFFB300),
-          elevation: 4,
-          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        floatingActionButton: SizedBox(
+          width: 56,
+          height: 56,
+          child: FloatingActionButton(
+            onPressed: _navigateToCreatePost,
+            backgroundColor: const Color(0xFFD4AF37),
+            elevation: 6,
+            shape: const CircleBorder(),
+            child: const Icon(Icons.add, color: Colors.white, size: 30),
+          ),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
     );
   }
 
+  Future<void> _navigateToCreatePost() async {
+    final result = await context.push<bool>('/create-post');
+    if (result == true && mounted) {
+      setState(() => _showSuccessBanner = true);
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _showSuccessBanner = false);
+      });
+    }
+  }
+
   Widget _buildEmptyState(BuildContext context) {
     return EmptyState(
       icon: Icons.article_outlined,
       title: 'No posts yet',
-      subtitle: 'Be the first to share an achievement!\nBe specific and GDPR-safe.',
+      subtitle:
+          'Be the first to share an achievement!\nBe specific and GDPR-safe.',
       action: FloatingActionButton.extended(
         onPressed: () => context.push('/create-post'),
         icon: const Icon(Icons.add),
@@ -230,8 +304,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   }
 }
 
-// PostCard widget
-class PostCard extends ConsumerStatefulWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// Post Card – pixel-perfect to the Figma design
+// ─────────────────────────────────────────────────────────────────────────────
+class _PostCard extends ConsumerStatefulWidget {
   final String postId;
   final String authorId;
   final String authorName;
@@ -241,8 +317,7 @@ class PostCard extends ConsumerStatefulWidget {
   final int stars;
   final DateTime createdAt;
 
-  const PostCard({
-    super.key,
+  const _PostCard({
     required this.postId,
     required this.authorId,
     required this.authorName,
@@ -254,10 +329,10 @@ class PostCard extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<PostCard> createState() => _PostCardState();
+  ConsumerState<_PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends ConsumerState<PostCard> {
+class _PostCardState extends ConsumerState<_PostCard> {
   bool _hasGivenStar = false;
   bool _isGivingStar = false;
 
@@ -287,24 +362,61 @@ class _PostCardState extends ConsumerState<PostCard> {
     }
   }
 
-  Widget _getCategoryTag() {
+  // ── Category badge helpers ──
+  Color _categoryBg() {
     switch (widget.category.toLowerCase()) {
       case 'compassion':
-        return CategoryTag.compassion();
+        return const Color(0xFFFFE0E6);
       case 'teamwork':
-        return CategoryTag.teamwork();
+        return const Color(0xFFE0F0FF);
       case 'excellence':
-        return CategoryTag.excellence();
+        return const Color(0xFFE0FFF4);
       case 'leadership':
-        return CategoryTag.leadership();
+        return const Color(0xFFFFF8E0);
       case 'reliability':
-        return CategoryTag.reliability();
+        return const Color(0xFFEEF3FB);
+      case 'above & beyond':
+        return const Color(0xFFF3E8FF);
       default:
-        return CategoryTag(
-          label: widget.category,
-          color: AppColors.primary,
-          backgroundColor: AppColors.primaryLight,
-        );
+        return const Color(0xFFEEF3FB);
+    }
+  }
+
+  Color _categoryFg() {
+    switch (widget.category.toLowerCase()) {
+      case 'compassion':
+        return const Color(0xFFE53E5C);
+      case 'teamwork':
+        return const Color(0xFF2196F3);
+      case 'excellence':
+        return const Color(0xFF2FB9A3);
+      case 'leadership':
+        return const Color(0xFFB8962E);
+      case 'reliability':
+        return const Color(0xFF0A2C6B);
+      case 'above & beyond':
+        return const Color(0xFF7C3AED);
+      default:
+        return const Color(0xFF0A2C6B);
+    }
+  }
+
+  IconData _categoryIcon() {
+    switch (widget.category.toLowerCase()) {
+      case 'compassion':
+        return Icons.favorite;
+      case 'teamwork':
+        return Icons.groups;
+      case 'excellence':
+        return Icons.star;
+      case 'leadership':
+        return Icons.workspace_premium;
+      case 'reliability':
+        return Icons.verified;
+      case 'above & beyond':
+        return Icons.rocket_launch;
+      default:
+        return Icons.label;
     }
   }
 
@@ -314,90 +426,99 @@ class _PostCardState extends ConsumerState<PostCard> {
     final multiplier = ref.watch(starMultiplierProvider);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
+            blurRadius: 12,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header row
+            // ── Header row ──
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Profile picture
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: const Color(0xFF0A2C6B),
-                  child: Text(
-                    Formatters.getInitials(widget.authorName),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                // Avatar
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF0A2C6B),
+                  ),
+                  child: Center(
+                    child: Text(
+                      Formatters.getInitials(widget.authorName),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Name, role, time
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Name
                       Text(
                         widget.authorName,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF212121),
+                          color: Color(0xFF1A1A2E),
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      // Role and Category
+                      const SizedBox(height: 3),
                       Row(
                         children: [
                           Text(
                             _formatRole(widget.authorRole),
                             style: const TextStyle(
                               fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xFF757575),
+                              color: Color(0xFF8E8E93),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            width: 3,
-                            height: 3,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF757575),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFE0B2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6),
                             child: Text(
-                              widget.category,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFFE65100),
-                              ),
+                              '•',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF8E8E93)),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: _categoryBg(),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(_categoryIcon(),
+                                    size: 12, color: _categoryFg()),
+                                const SizedBox(width: 4),
+                                Text(
+                                  widget.category,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: _categoryFg(),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -405,37 +526,34 @@ class _PostCardState extends ConsumerState<PostCard> {
                     ],
                   ),
                 ),
-                // Time
                 Text(
                   Formatters.timeAgo(widget.createdAt),
                   style: const TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF9E9E9E),
+                    color: Color(0xFFB0B0B0),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            // Content
+            const SizedBox(height: 14),
+
+            // ── Content ──
             Text(
               widget.content,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF424242),
+                color: Color(0xFF3C3C43),
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: 8),
-            // Read more link - only show if content is long enough
-            if (widget.content.length > 150)
+
+            // Read more
+            if (widget.content.length > 100) ...[
+              const SizedBox(height: 6),
               GestureDetector(
-                onTap: () {
-                  // TODO: Navigate to post detail
-                },
+                onTap: () => context.push('/post/${widget.postId}'),
                 child: const Text(
                   'Read more',
                   style: TextStyle(
@@ -445,65 +563,78 @@ class _PostCardState extends ConsumerState<PostCard> {
                   ),
                 ),
               ),
-            if (widget.content.length > 150) const SizedBox(height: 16),
-            if (widget.content.length <= 150) const SizedBox(height: 8),
-            // Divider
-            Container(
-              height: 1,
-              color: const Color(0xFFEEEEEE),
-            ),
+            ],
+            const SizedBox(height: 14),
+
+            // ── Divider ──
+            Container(height: 1, color: const Color(0xFFF0F0F0)),
             const SizedBox(height: 12),
-            // Bottom row: Star count and Give Star button
+
+            // ── Footer ──
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Star count
                 Row(
                   children: [
-                    const Icon(
-                      Icons.star,
-                      color: Color(0xFFFFB300),
-                      size: 20,
-                    ),
+                    const Icon(Icons.star_rounded,
+                        color: Color(0xFFD4AF37), size: 22),
                     const SizedBox(width: 4),
                     Text(
                       '${widget.stars}',
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF212121),
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A2E),
                       ),
                     ),
                   ],
                 ),
-                // Give Star button
                 GestureDetector(
                   onTap: (!canGiveStars || _isGivingStar)
                       ? null
                       : () => _hasGivenStar
-                            ? _removeStar(multiplier)
-                            : _giveStar(multiplier),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _hasGivenStar ? Icons.star : Icons.star_border,
-                        size: 20,
+                          ? _removeStar(multiplier)
+                          : _giveStar(multiplier),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _hasGivenStar
+                          ? const Color(0xFFFFF8E0)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
                         color: _hasGivenStar
-                            ? const Color(0xFFFFB300)
-                            : const Color(0xFF757575),
+                            ? const Color(0xFFD4AF37)
+                            : const Color(0xFFE0E0E0),
+                        width: 1.5,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Give Star',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _hasGivenStar
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          size: 18,
                           color: _hasGivenStar
-                              ? const Color(0xFFFFB300)
-                              : const Color(0xFF212121),
+                              ? const Color(0xFFD4AF37)
+                              : const Color(0xFF555555),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          'Give Star',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _hasGivenStar
+                                ? const Color(0xFFD4AF37)
+                                : const Color(0xFF1A1A2E),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -517,13 +648,10 @@ class _PostCardState extends ConsumerState<PostCard> {
   Future<void> _giveStar(int multiplier) async {
     final currentUser = ref.read(currentUserProvider);
     if (currentUser == null) return;
-
     setState(() => _isGivingStar = true);
-
     try {
       final starService = ref.read(starPostProvider);
       final currentUserProfile = ref.read(userProfileProvider).value;
-
       await starService.giveStarToPost(
         postId: widget.postId,
         postAuthorId: widget.authorId,
@@ -532,14 +660,22 @@ class _PostCardState extends ConsumerState<PostCard> {
         giverId: currentUser.uid,
         category: widget.category,
       );
-
       await FirebaseFirestore.instance
           .collection(AppConstants.postsCollection)
           .doc(widget.postId)
           .update({
-            'starredBy': FieldValue.arrayUnion([currentUser.uid]),
-          });
-
+        'starredBy': FieldValue.arrayUnion([currentUser.uid]),
+      });
+      if (currentUser.uid != widget.authorId) {
+        await NotificationService.notifyStarReceived(
+          recipientId: widget.authorId,
+          giverName: currentUserProfile?.fullName ?? 'Someone',
+          category: widget.category,
+          postId: widget.postId,
+          giverId: currentUser.uid,
+          multiplier: multiplier,
+        );
+      }
       if (mounted) {
         setState(() => _hasGivenStar = true);
         context.showSnackBar(
@@ -551,34 +687,27 @@ class _PostCardState extends ConsumerState<PostCard> {
         context.showErrorSnackBar('Failed to give star: $e');
       }
     } finally {
-      if (mounted) {
-        setState(() => _isGivingStar = false);
-      }
+      if (mounted) setState(() => _isGivingStar = false);
     }
   }
 
   Future<void> _removeStar(int multiplier) async {
     final currentUser = ref.read(currentUserProvider);
     if (currentUser == null) return;
-
     setState(() => _isGivingStar = true);
-
     try {
       final starService = ref.read(starPostProvider);
-
       await starService.removeStarFromPost(
         postId: widget.postId,
         postAuthorId: widget.authorId,
         multiplier: multiplier.toDouble(),
       );
-
       await FirebaseFirestore.instance
           .collection(AppConstants.postsCollection)
           .doc(widget.postId)
           .update({
-            'starredBy': FieldValue.arrayRemove([currentUser.uid]),
-          });
-
+        'starredBy': FieldValue.arrayRemove([currentUser.uid]),
+      });
       if (mounted) {
         setState(() => _hasGivenStar = false);
         context.showSnackBar('Star removed');
@@ -588,9 +717,7 @@ class _PostCardState extends ConsumerState<PostCard> {
         context.showErrorSnackBar('Failed to remove star: $e');
       }
     } finally {
-      if (mounted) {
-        setState(() => _isGivingStar = false);
-      }
+      if (mounted) setState(() => _isGivingStar = false);
     }
   }
 
@@ -598,9 +725,8 @@ class _PostCardState extends ConsumerState<PostCard> {
     return role
         .replaceAll('_', ' ')
         .split(' ')
-        .map((word) => word.isNotEmpty
-            ? '${word[0].toUpperCase()}${word.substring(1)}'
-            : '')
+        .map((w) =>
+            w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
         .join(' ');
   }
 }

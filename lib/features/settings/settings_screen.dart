@@ -71,7 +71,7 @@ class SettingsScreen extends ConsumerWidget {
                     );
                     if (confirmed && context.mounted) {
                       await ref.read(authNotifierProvider.notifier).logout();
-                      if (context.mounted) context.go('/welcome');
+                      if (context.mounted) context.go('/login');
                     }
                   },
                   icon: const Icon(Icons.logout),

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../services/firebase_service.dart';
 import '../utils/error_handler.dart';
 
@@ -96,7 +97,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // If Firestore fails but auth succeeds, delete the auth account
       try {
         await FirebaseAuth.instance.currentUser?.delete();
-      } catch (_) {}
+      } catch (deleteError) {
+        debugPrint('Warning: Could not delete auth account after Firestore failure: $deleteError');
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -107,7 +110,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Cleanup on error
       try {
         await FirebaseAuth.instance.currentUser?.delete();
-      } catch (_) {}
+      } catch (deleteError) {
+        debugPrint('Warning: Could not delete auth account during error cleanup: $deleteError');
+      }
 
       state = state.copyWith(
         isLoading: false,

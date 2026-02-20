@@ -117,17 +117,21 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
                       ),
                     ),
                     const Spacer(flex: 1),
-                    // Yes/No buttons
-                    Column(
+                    // Yes/No buttons - side by side
+                    Row(
                       children: [
-                        _buildAnswerButton(
-                          label: 'Yes',
-                          value: true,
+                        Expanded(
+                          child: _buildAnswerButton(
+                            label: 'Yes',
+                            value: true,
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        _buildAnswerButton(
-                          label: 'No',
-                          value: false,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildAnswerButton(
+                            label: 'No',
+                            value: false,
+                          ),
                         ),
                       ],
                     ),
@@ -235,18 +239,17 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
     }
     
     return SizedBox(
-      width: double.infinity,
-      height: 56,
+      height: 80,
       child: ElevatedButton(
         onPressed: _showFeedback ? null : () => _answerQuestion(value),
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
           foregroundColor: textColor,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             side: BorderSide(
               color: borderColor,
-              width: 1,
+              width: isSelected ? 2 : 1,
             ),
           ),
           elevation: 0,
@@ -256,7 +259,7 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.w600,
             color: textColor,
           ),

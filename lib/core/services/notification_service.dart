@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../utils/constants.dart';
 
 enum NotificationType {
@@ -39,7 +40,7 @@ class NotificationService {
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error creating notification: $e');
+      debugPrint('Error creating notification: $e');
     }
   }
 
@@ -141,7 +142,7 @@ class NotificationService {
         'readAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error marking notification as read: $e');
+      debugPrint('Error marking notification as read: $e');
     }
   }
 
@@ -164,7 +165,7 @@ class NotificationService {
 
       await batch.commit();
     } catch (e) {
-      print('Error marking all notifications as read: $e');
+      debugPrint('Error marking all notifications as read: $e');
     }
   }
 
@@ -173,7 +174,7 @@ class NotificationService {
     try {
       await _db.collection('notifications').doc(notificationId).delete();
     } catch (e) {
-      print('Error deleting notification: $e');
+      debugPrint('Error deleting notification: $e');
     }
   }
 

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/widgets/custom_button.dart';
+import '../../core/utils/constants.dart';
+import '../../core/utils/extensions.dart';
 
 class AccountSettingsScreen extends ConsumerStatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -176,14 +180,39 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
   }
 
   Future<void> _saveChanges() async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) {
+      if (mounted) {
+        context.showErrorSnackBar('User not found');
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
-    // TODO: Implement save functionality
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isLoading = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Changes saved successfully')),
-      );
+    
+    try {
+      // Update Firestore user document
+      await FirebaseFirestore.instance
+          .collection(AppConstants.usersCollection)
+          .doc(user.uid)
+          .update({
+            'firstName': _firstNameController.text.trim(),
+            'lastName': _lastNameController.text.trim(),
+            'phone': _phoneController.text.trim().isNotEmpty 
+                ? _phoneController.text.trim() 
+                : null,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+      if (mounted) {
+        context.showSnackBar('Changes saved successfully');
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showErrorSnackBar('Failed to save changes: $e');
+      }
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 }

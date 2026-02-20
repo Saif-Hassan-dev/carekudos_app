@@ -34,6 +34,15 @@ class FirebaseService {
     String? organizationId,
     String? teamId,
     bool gdprConsent = false,
+    // New fields
+    DateTime? dateOfBirth,
+    String? preferredContactMethod,
+    String? fullAddress,
+    String? professionalRegNumber,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    String? profilePhotoBase64,
+    bool agreeToUpdates = false,
   }) async {
     try {
       await _db.collection('users').doc(userId).set({
@@ -60,6 +69,16 @@ class FirebaseService {
         // GDPR consent
         'gdprConsentGiven': gdprConsent,
         'gdprConsentTimestamp': gdprConsent ? FieldValue.serverTimestamp() : null,
+
+        // New profile fields
+        'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
+        'preferredContactMethod': preferredContactMethod,
+        'fullAddress': fullAddress,
+        'professionalRegNumber': professionalRegNumber,
+        'emergencyContactName': emergencyContactName,
+        'emergencyContactPhone': emergencyContactPhone,
+        'profilePhotoBase64': profilePhotoBase64,
+        'agreeToUpdates': agreeToUpdates,
       });
     } catch (e) {
       throw Exception('Failed to create user profile: $e');

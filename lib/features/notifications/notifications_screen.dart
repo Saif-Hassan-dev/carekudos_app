@@ -186,7 +186,12 @@ class _NotificationTile extends StatelessWidget {
         onTap: () async {
           // Mark as read
           await NotificationService.markAsRead(notificationId);
-          // TODO: Navigate to related content if applicable
+          
+          // Navigate to related content if available
+          final relatedPostId = data['relatedPostId'] as String?;
+          if (relatedPostId != null && context.mounted) {
+            context.push('/post/$relatedPostId');
+          }
         },
       ),
     );

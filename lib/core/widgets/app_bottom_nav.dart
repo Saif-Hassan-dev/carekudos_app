@@ -18,49 +18,53 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
             offset: const Offset(0, -2),
           ),
         ],
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NavItem(
                 icon: Icons.home_outlined,
-                activeIcon: Icons.home,
+                activeIcon: Icons.home_rounded,
                 label: 'Home',
                 isActive: currentIndex == 0,
                 onTap: () => onTap(0),
+                activeColor: const Color(0xFF0A7AFF),
               ),
               _NavItem(
-                icon: Icons.add_circle_outline,
-                activeIcon: Icons.add_circle,
+                icon: Icons.edit_note_outlined,
+                activeIcon: Icons.edit_note,
                 label: 'Create',
                 isActive: currentIndex == 1,
                 onTap: () => onTap(1),
+                activeColor: const Color(0xFF0A7AFF),
               ),
               _NavItem(
-                icon: Icons.notifications_outlined,
-                activeIcon: Icons.notifications,
+                icon: Icons.notifications_none_rounded,
+                activeIcon: Icons.notifications_rounded,
                 label: 'Alerts',
                 isActive: currentIndex == 2,
                 onTap: () => onTap(2),
                 badgeCount: notificationCount,
+                activeColor: const Color(0xFF0A7AFF),
               ),
               _NavItem(
-                icon: Icons.person_outline,
-                activeIcon: Icons.person,
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
                 label: 'Profile',
                 isActive: currentIndex == 3,
                 onTap: () => onTap(3),
+                activeColor: const Color(0xFF0A7AFF),
               ),
             ],
           ),
@@ -77,6 +81,7 @@ class _NavItem extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
   final int badgeCount;
+  final Color activeColor;
 
   const _NavItem({
     required this.icon,
@@ -85,15 +90,18 @@ class _NavItem extends StatelessWidget {
     required this.isActive,
     required this.onTap,
     this.badgeCount = 0,
+    this.activeColor = const Color(0xFF0A7AFF),
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = isActive ? activeColor : const Color(0xFFADB5BD);
+
     return InkWell(
       onTap: onTap,
-      borderRadius: AppRadius.allLg,
+      borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -101,20 +109,22 @@ class _NavItem extends StatelessWidget {
               isLabelVisible: badgeCount > 0,
               label: Text(
                 badgeCount > 99 ? '99+' : badgeCount.toString(),
-                style: const TextStyle(fontSize: 10),
+                style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
               ),
+              backgroundColor: const Color(0xFFEF4444),
               child: Icon(
                 isActive ? activeIcon : icon,
-                color: isActive ? AppColors.primary : AppColors.textTertiary,
-                size: 24,
+                color: color,
+                size: 26,
               ),
             ),
-            AppSpacing.verticalGap4,
+            const SizedBox(height: 4),
             Text(
               label,
-              style: AppTypography.captionC2.copyWith(
-                color: isActive ? AppColors.primary : AppColors.textTertiary,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                color: color,
               ),
             ),
           ],

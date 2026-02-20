@@ -82,10 +82,10 @@ class _GdprExplanationScreenState extends State<GdprExplanationScreen> {
                   ),
                   children: [
                     const TextSpan(text: 'GDPR '),
-                    TextSpan(
+                    const TextSpan(
                       text: 'Training',
                       style: TextStyle(
-                        color: const Color(0xFFD4AF37), // Gold
+                        color: Color(0xFFD4AF37), // Gold
                       ),
                     ),
                     const TextSpan(text: ' Check'),

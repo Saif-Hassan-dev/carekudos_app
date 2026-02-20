@@ -23,10 +23,15 @@ class AppConstants {
   static const List<String> postCategories = [
     'Teamwork',
     'Above & Beyond',
-    'Communication',
+    'Reliability',
     'Compassion',
-    'Clinical Excellence',
-    'Problem Solving',
+    'Leadership',
+  ];
+
+  static const List<String> careValues = [
+    'Compassion',
+    'Teamwork',
+    'Excellence',
   ];
 
   // Notification Times

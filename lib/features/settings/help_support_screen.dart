@@ -1,10 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/theme.dart';
+import '../../core/utils/extensions.dart';
 
 class HelpSupportScreen extends ConsumerWidget {
   const HelpSupportScreen({super.key});
+
+  Future<void> _openEmailClient(BuildContext context) async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: 'support@carekudos.com',
+      query: 'subject=CareKudos Support Request',
+    );
+
+    if (!await launchUrl(emailUri)) {
+      if (context.mounted) {
+        context.showErrorSnackBar('Could not open email client');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,9 +56,7 @@ class HelpSupportScreen extends ConsumerWidget {
           _NavigationItem(
             title: 'Contact support',
             subtitle: 'support@carekudos.com',
-            onTap: () {
-              // TODO: Open email client
-            },
+            onTap: () => _openEmailClient(context),
           ),
           AppSpacing.verticalGap16,
 

@@ -7,6 +7,7 @@ import '../features/auth/login_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/feed/create_post_screen.dart';
+import '../features/post/post_detail_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/account_settings_screen.dart';
@@ -51,14 +52,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/welcome';
         }
         
-        // If they've completed onboarding but accessing welcome/onboarding, redirect to login
-        if (hasSeenOnboarding && (state.matchedLocation == '/welcome' || state.matchedLocation == '/onboarding')) {
+        // If they've completed onboarding but accessing welcome, redirect to login
+        // Allow /onboarding access so users can register a new account
+        if (hasSeenOnboarding && state.matchedLocation == '/welcome') {
           return '/login';
         }
         
         // If they're trying to access protected routes without login
         if (state.matchedLocation == '/feed' || 
             state.matchedLocation == '/profile' ||
+            state.matchedLocation == '/create-post' ||
+            state.matchedLocation == '/notifications' ||
+            state.matchedLocation.startsWith('/post/') ||
             state.matchedLocation.startsWith('/settings')) {
           return hasSeenOnboarding ? '/login' : '/welcome';
         }
@@ -79,6 +84,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/create-post',
         builder: (context, state) => const CreatePostScreen(),
+      ),
+      GoRoute(
+        path: '/post/:postId',
+        builder: (context, state) {
+          final postId = state.pathParameters['postId']!;
+          return PostDetailScreen(postId: postId);
+        },
       ),
       GoRoute(
         path: '/profile',

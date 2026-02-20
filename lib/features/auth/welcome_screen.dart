@@ -58,11 +58,11 @@ class WelcomeScreen extends StatelessWidget {
                     color: Color(0xFF0A2C6B), // Navy
                   ),
                   children: [
-                    const TextSpan(text: 'Shining a Light on '),
-                    TextSpan(
+                    const TextSpan(text: 'Shining a Light on\n'),
+                    const TextSpan(
                       text: 'Exceptional',
                       style: TextStyle(
-                        color: const Color(0xFFD4AF37), // Gold
+                        color: Color(0xFFD4AF37), // Gold
                       ),
                     ),
                     const TextSpan(text: ' Care'),
