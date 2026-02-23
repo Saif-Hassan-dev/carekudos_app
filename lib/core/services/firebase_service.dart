@@ -85,13 +85,6 @@ class FirebaseService {
     }
   }
 
-  static Future<void> markTutorialSeen(
-    String userId,
-    String tutorialKey,
-  ) async {
-    await _db.collection('users').doc(userId).update({tutorialKey: true});
-  }
-
   /// Record GDPR consent with timestamp
   static Future<void> recordGdprConsent(String userId) async {
     try {

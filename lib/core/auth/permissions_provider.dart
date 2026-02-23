@@ -22,7 +22,6 @@ class UserProfile {
   final String? organizationId;
   final String? teamId;
   final List<String> managerIds;
-  final bool hasSeenFeedTutorial;
   final bool gdprConsentGiven;
   final DateTime? gdprConsentTimestamp;
 
@@ -44,7 +43,6 @@ class UserProfile {
     this.organizationId,
     this.teamId,
     this.managerIds = const [],
-    this.hasSeenFeedTutorial = false,
     this.gdprConsentGiven = false,
     this.gdprConsentTimestamp,
   });
@@ -72,7 +70,6 @@ class UserProfile {
           ? (data['lastPostDate'] as Timestamp).toDate()
           : null,
       organizationId: data['organizationId'],
-      hasSeenFeedTutorial: data['hasSeenFeedTutorial'] ?? false,
       teamId: data['teamId'],
       managerIds: data['managerIds'] != null
           ? List<String>.from(data['managerIds'])

@@ -27,15 +27,6 @@ class StorageService {
     return prefs.getBool(AppConstants.onboardingCompleteKey) ?? false;
   }
 
-  // Feed Tutorial
-  static Future<bool> setFeedTutorialSeen(bool value) async {
-    return await prefs.setBool(AppConstants.feedTutorialSeenKey, value);
-  }
-
-  static bool hasFeedTutorialSeen() {
-    return prefs.getBool(AppConstants.feedTutorialSeenKey) ?? false;
-  }
-
   // Draft Posts
   static Future<bool> saveDraft({
     required String content,

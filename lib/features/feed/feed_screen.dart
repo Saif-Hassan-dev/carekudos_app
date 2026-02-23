@@ -14,7 +14,6 @@ import '../../core/auth/auth_notifier.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../stars/providers/star_provider.dart';
 import '../stars/widgets/give_star_bottom_sheet.dart';
-import '../../core/widgets/tutorial_overlay.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/cards.dart';
 import '../../core/widgets/custom_text_field.dart';
@@ -63,38 +62,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final showTutorial = userProfile.when(
-      data: (profile) => !(profile?.hasSeenFeedTutorial ?? true),
-      loading: () => false,
-      error: (_, __) => false,
-    );
-
-    return TutorialOverlay(
-      showTutorial: showTutorial,
-      onComplete: () async {
-        await FirebaseService.markTutorialSeen(user.uid, 'hasSeenFeedTutorial');
-      },
-      steps: const [
-        TutorialStep(
-          icon: Icons.add_circle_outline,
-          title: 'Tap + to share an achievement',
-          description:
-              'Celebrate your colleagues\' great work by sharing what they did.',
-        ),
-        TutorialStep(
-          icon: Icons.security,
-          title: 'Be specific and GDPR-safe',
-          description:
-              'Don\'t use names or identifying details. Focus on the action, not the person.',
-        ),
-        TutorialStep(
-          icon: Icons.star,
-          title: 'Colleagues can give you stars',
-          description:
-              'When others appreciate your post, they\'ll give you stars. Collect stars to level up!',
-        ),
-      ],
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: const Color(0xFFF8F8F8),
         body: SafeArea(
           child: Column(
@@ -284,8 +252,14 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                         final doc = snapshot.data!.docs[index];
                         final data = doc.data() as Map<String, dynamic>;
 
+                        final currentUser = ref.read(currentUserProvider);
+                        final starredBy = data['starredBy'] as List<dynamic>? ?? [];
+                        final hasGivenStar = currentUser != null &&
+                            starredBy.contains(currentUser.uid);
+
                         return RepaintBoundary(
                           child: _PostCard(
+                          key: ValueKey(doc.id),
                           postId: doc.id,
                           authorId: data['authorId'] ?? '',
                           authorName: data['authorName'] ?? 'Anonymous',
@@ -296,6 +270,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                           createdAt: data['createdAt'] != null
                               ? (data['createdAt'] as Timestamp).toDate()
                               : DateTime.now(),
+                          initialHasGivenStar: hasGivenStar,
                           onStarGiven: _showStarGivenSuccess,
                         ),
                         );
@@ -325,8 +300,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           ),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      ),
-    );
+      );
   }
 
   Future<void> _navigateToCreatePost() async {
@@ -362,9 +336,6 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Post Card – pixel-perfect to the Figma design
-// ─────────────────────────────────────────────────────────────────────────────
 class _PostCard extends ConsumerStatefulWidget {
   final String postId;
   final String authorId;
@@ -374,9 +345,11 @@ class _PostCard extends ConsumerStatefulWidget {
   final String category;
   final int stars;
   final DateTime createdAt;
+  final bool initialHasGivenStar;
   final VoidCallback? onStarGiven;
 
   const _PostCard({
+    super.key,
     required this.postId,
     required this.authorId,
     required this.authorName,
@@ -385,6 +358,7 @@ class _PostCard extends ConsumerStatefulWidget {
     required this.category,
     required this.stars,
     required this.createdAt,
+    this.initialHasGivenStar = false,
     this.onStarGiven,
   });
 
@@ -392,34 +366,18 @@ class _PostCard extends ConsumerStatefulWidget {
   ConsumerState<_PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends ConsumerState<_PostCard> {
-  bool _hasGivenStar = false;
+class _PostCardState extends ConsumerState<_PostCard>
+    with AutomaticKeepAliveClientMixin {
+  late bool _hasGivenStar;
   bool _isGivingStar = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _checkIfStarred();
-  }
-
-  Future<void> _checkIfStarred() async {
-    final currentUser = ref.read(currentUserProvider);
-    if (currentUser == null) return;
-
-    final doc = await FirebaseFirestore.instance
-        .collection(AppConstants.postsCollection)
-        .doc(widget.postId)
-        .get();
-
-    if (doc.exists) {
-      final data = doc.data()!;
-      final starredBy = data['starredBy'] as List<dynamic>?;
-      if (mounted) {
-        setState(() {
-          _hasGivenStar = starredBy?.contains(currentUser.uid) ?? false;
-        });
-      }
-    }
+    _hasGivenStar = widget.initialHasGivenStar;
   }
 
   // ── Category badge helpers ──
@@ -487,6 +445,7 @@ class _PostCardState extends ConsumerState<_PostCard> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required by AutomaticKeepAliveClientMixin
     final canGiveStars = ref.watch(canGiveStarsProvider) && !_isOwnPost;
     final multiplier = ref.watch(starMultiplierProvider);
 
