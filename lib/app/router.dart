@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/welcome_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/splash/splash_screen.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/feed/create_post_screen.dart';
 import '../features/post/post_detail_screen.dart';
@@ -23,9 +24,12 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authStateStream = ref.watch(authStateProvider.stream);
 
   return GoRouter(
-    initialLocation: '/welcome',
+    initialLocation: '/splash',
     refreshListenable: GoRouterRefreshStream(authStateStream),
     redirect: (context, state) async {
+      // Don't redirect away from splash
+      if (state.matchedLocation == '/splash') return null;
+
       final user = ref.read(authStateProvider).value;
       final isLoggedIn = user != null;
       final hasSeenOnboarding = StorageService.hasCompletedOnboarding();
@@ -71,6 +75,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => SplashScreen(
+          onComplete: () {
+            final user = ref.read(authStateProvider).value;
+            final hasSeenOnboarding = StorageService.hasCompletedOnboarding();
+            if (user != null) {
+              context.go('/feed');
+            } else if (hasSeenOnboarding) {
+              context.go('/login');
+            } else {
+              context.go('/welcome');
+            }
+          },
+        ),
+      ),
       GoRoute(
         path: '/welcome',
         builder: (context, state) => const WelcomeScreen(),
