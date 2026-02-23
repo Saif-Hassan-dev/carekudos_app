@@ -7,6 +7,7 @@ import '../../core/auth/auth_notifier.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/constants.dart';
+import '../stars/providers/star_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -234,6 +235,122 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
+                // Star History Section
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.star_rounded,
+                              color: Color(0xFFD4AF37), size: 22),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Star History',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF212121),
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${profile.totalStars} total',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF757575),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('star_history')
+                            .where('receiverId', isEqualTo: profile.uid)
+                            .limit(10)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          }
+
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
+                            return Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8F8F8),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Column(
+                                children: [
+                                  Icon(Icons.star_border,
+                                      color: Color(0xFFBDBDBD), size: 36),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'No stars received yet',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF757575),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          final stars = snapshot.data!.docs.toList();
+                          stars.sort((a, b) {
+                            final aData =
+                                a.data() as Map<String, dynamic>;
+                            final bData =
+                                b.data() as Map<String, dynamic>;
+                            final aTime =
+                                aData['createdAt'] as Timestamp?;
+                            final bTime =
+                                bData['createdAt'] as Timestamp?;
+                            if (aTime == null && bTime == null) return 0;
+                            if (aTime == null) return 1;
+                            if (bTime == null) return -1;
+                            return bTime.compareTo(aTime);
+                          });
+
+                          return Column(
+                            children: stars.map((doc) {
+                              final data =
+                                  doc.data() as Map<String, dynamic>;
+                              return _buildStarHistoryItem(
+                                giverName:
+                                    data['giverName'] ?? 'Someone',
+                                starType:
+                                    data['starType'] ?? 'Peer',
+                                points: data['points'] ?? 1,
+                                note: data['note'],
+                                category: data['category'],
+                                createdAt: data['createdAt'] != null
+                                    ? (data['createdAt'] as Timestamp)
+                                        .toDate()
+                                    : DateTime.now(),
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
                 // My Posts Section
                 Container(
                   color: Colors.white,
@@ -323,6 +440,126 @@ class ProfileScreen extends ConsumerWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildStarHistoryItem({
+    required String giverName,
+    required String starType,
+    required int points,
+    required String? note,
+    required String? category,
+    required DateTime createdAt,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFDF5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFF0BF)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFF8E0),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(
+                  points.clamp(1, 3),
+                  (_) => const Icon(
+                    Icons.star_rounded,
+                    color: Color(0xFFD4AF37),
+                    size: 12,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF424242),
+                      fontFamily: 'Inter',
+                    ),
+                    children: [
+                      TextSpan(
+                        text: giverName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      TextSpan(text: ' gave you $points star${points > 1 ? 's' : ''}'),
+                      if (category != null)
+                        TextSpan(
+                          text: ' for $category',
+                          style: const TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: Color(0xFF757575),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (note != null && note.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '"$note"',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: Color(0xFF757575),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEEF3FB),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        starType,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF0A2C6B),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      Formatters.timeAgo(createdAt),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

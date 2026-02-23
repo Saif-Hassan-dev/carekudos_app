@@ -97,6 +97,35 @@ service cloud.firestore {
       allow write: if false; // Only admin/system can write
     }
     
+    // Star history collection – tracks every star given
+    match /star_history/{historyId} {
+      // Any authenticated user can read star history
+      // (queries are filtered by giverId or receiverId in app code)
+      allow read: if isSignedIn();
+      
+      // Only authenticated users can create star history entries
+      // Cannot give stars to yourself
+      allow create: if isSignedIn()
+                    && request.resource.data.giverId == request.auth.uid
+                    && request.resource.data.giverId != request.resource.data.receiverId;
+      
+      // Star history should not be edited or deleted
+      allow update, delete: if false;
+    }
+    
+    // Push notifications queue (processed by Cloud Functions)
+    match /push_notifications/{notifId} {
+      // Only the recipient can read their push notifications
+      allow read: if isSignedIn()
+                  && resource.data.recipientId == request.auth.uid;
+      
+      // Any authenticated user can create (queue) a push notification
+      allow create: if isSignedIn();
+      
+      // No edits or deletes from clients
+      allow update, delete: if false;
+    }
+    
     // Organizations collection (for future use)
     match /organizations/{orgId} {
       allow read: if isSignedIn();

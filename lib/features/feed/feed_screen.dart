@@ -13,6 +13,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/auth/auth_notifier.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../stars/providers/star_provider.dart';
+import '../stars/widgets/give_star_bottom_sheet.dart';
 import '../../core/widgets/tutorial_overlay.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/cards.dart';
@@ -21,6 +22,8 @@ import '../../core/widgets/app_bottom_nav.dart';
 import '../../core/widgets/app_logo.dart';
 import '../../core/providers/notification_provider.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/push_notification_service.dart';
+import 'widgets/app_hero_section.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -32,6 +35,8 @@ class FeedScreen extends ConsumerStatefulWidget {
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   int _currentNavIndex = 0;
   bool _showSuccessBanner = false;
+  bool _showStarGivenBanner = false;
+  bool _showHeroSection = true;
 
   void _onNavTap(int index) {
     if (index == 1) {
@@ -202,6 +207,48 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                   ),
                 ),
 
+              // ── Star Given Success Banner ──
+              if (_showStarGivenBanner)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF81C784)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 22,
+                        height: 22,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4CAF50),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check, color: Colors.white, size: 14),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Star given successfully',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // ── Hero / Features Section ──
+              if (_showHeroSection)
+                AppHeroSection(
+                  onDismiss: () => setState(() => _showHeroSection = false),
+                  onCreatePost: _navigateToCreatePost,
+                ),
+
               // ── Feed List ──
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
@@ -232,11 +279,13 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       itemCount: snapshot.data!.docs.length,
+                      addAutomaticKeepAlives: true,
                       itemBuilder: (context, index) {
                         final doc = snapshot.data!.docs[index];
                         final data = doc.data() as Map<String, dynamic>;
 
-                        return _PostCard(
+                        return RepaintBoundary(
+                          child: _PostCard(
                           postId: doc.id,
                           authorId: data['authorId'] ?? '',
                           authorName: data['authorName'] ?? 'Anonymous',
@@ -247,6 +296,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                           createdAt: data['createdAt'] != null
                               ? (data['createdAt'] as Timestamp).toDate()
                               : DateTime.now(),
+                          onStarGiven: _showStarGivenSuccess,
+                        ),
                         );
                       },
                     );
@@ -288,6 +339,13 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     }
   }
 
+  void _showStarGivenSuccess() {
+    setState(() => _showStarGivenBanner = true);
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _showStarGivenBanner = false);
+    });
+  }
+
   Widget _buildEmptyState(BuildContext context) {
     return EmptyState(
       icon: Icons.article_outlined,
@@ -316,6 +374,7 @@ class _PostCard extends ConsumerStatefulWidget {
   final String category;
   final int stars;
   final DateTime createdAt;
+  final VoidCallback? onStarGiven;
 
   const _PostCard({
     required this.postId,
@@ -326,6 +385,7 @@ class _PostCard extends ConsumerStatefulWidget {
     required this.category,
     required this.stars,
     required this.createdAt,
+    this.onStarGiven,
   });
 
   @override
@@ -420,9 +480,14 @@ class _PostCardState extends ConsumerState<_PostCard> {
     }
   }
 
+  bool get _isOwnPost {
+    final currentUser = ref.read(currentUserProvider);
+    return currentUser != null && currentUser.uid == widget.authorId;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final canGiveStars = ref.watch(canGiveStarsProvider);
+    final canGiveStars = ref.watch(canGiveStarsProvider) && !_isOwnPost;
     final multiplier = ref.watch(starMultiplierProvider);
 
     return Container(
@@ -594,7 +659,7 @@ class _PostCardState extends ConsumerState<_PostCard> {
                       ? null
                       : () => _hasGivenStar
                           ? _removeStar(multiplier)
-                          : _giveStar(multiplier),
+                          : _openGiveStarSheet(),
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -645,7 +710,43 @@ class _PostCardState extends ConsumerState<_PostCard> {
     );
   }
 
-  Future<void> _giveStar(int multiplier) async {
+  Future<void> _openGiveStarSheet() async {
+    // Prevent self-starring
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser != null && currentUser.uid == widget.authorId) {
+      if (mounted) context.showErrorSnackBar('You cannot give stars to your own post');
+      return;
+    }
+    final starsLeft = ref.read(starsLeftTodayProvider);
+    final result = await GiveStarBottomSheet.show(
+      context: context,
+      postId: widget.postId,
+      postAuthorId: widget.authorId,
+      category: widget.category,
+      starsLeftToday: starsLeft,
+      maxStarsPerDay: AppConstants.maxStarsPerDay,
+      onGiveStar: ({
+        required String starType,
+        required int points,
+        required String? note,
+      }) async {
+        await _giveStarWithType(
+          starType: starType,
+          points: points,
+          note: note,
+        );
+      },
+    );
+    if (result == true && mounted) {
+      widget.onStarGiven?.call();
+    }
+  }
+
+  Future<void> _giveStarWithType({
+    required String starType,
+    required int points,
+    required String? note,
+  }) async {
     final currentUser = ref.read(currentUserProvider);
     if (currentUser == null) return;
     setState(() => _isGivingStar = true);
@@ -655,10 +756,12 @@ class _PostCardState extends ConsumerState<_PostCard> {
       await starService.giveStarToPost(
         postId: widget.postId,
         postAuthorId: widget.authorId,
-        multiplier: multiplier.toDouble(),
+        multiplier: points.toDouble(),
         giverName: currentUserProfile?.fullName,
         giverId: currentUser.uid,
         category: widget.category,
+        starType: starType,
+        note: note,
       );
       await FirebaseFirestore.instance
           .collection(AppConstants.postsCollection)
@@ -673,14 +776,20 @@ class _PostCardState extends ConsumerState<_PostCard> {
           category: widget.category,
           postId: widget.postId,
           giverId: currentUser.uid,
-          multiplier: multiplier,
+          multiplier: points,
+        );
+        // Queue push notification for the post author
+        await PushNotificationService.pushStarReceived(
+          recipientId: widget.authorId,
+          giverName: currentUserProfile?.fullName ?? 'Someone',
+          points: points,
+          postId: widget.postId,
         );
       }
+      // Invalidate the stars-given-today cache
+      ref.invalidate(starsGivenTodayProvider);
       if (mounted) {
         setState(() => _hasGivenStar = true);
-        context.showSnackBar(
-          '⭐ Gave $multiplier star${multiplier > 1 ? 's' : ''}!',
-        );
       }
     } catch (e) {
       if (mounted) {
