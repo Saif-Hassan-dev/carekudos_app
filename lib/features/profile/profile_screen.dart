@@ -148,11 +148,26 @@ class ProfileScreen extends ConsumerWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildStatCard(
-                              icon: Icons.star_border,
-                              iconColor: const Color(0xFF00BCD4),
-                              value: '${profile.starsThisMonth}',
-                              label: 'Stars given',
+                            child: StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('star_history')
+                                  .where('giverId', isEqualTo: profile.uid)
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                int starsGiven = 0;
+                                if (snapshot.hasData) {
+                                  for (final doc in snapshot.data!.docs) {
+                                    final data = doc.data() as Map<String, dynamic>;
+                                    starsGiven += (data['points'] as int?) ?? 1;
+                                  }
+                                }
+                                return _buildStatCard(
+                                  icon: Icons.star_border,
+                                  iconColor: const Color(0xFF00BCD4),
+                                  value: '$starsGiven',
+                                  label: 'Stars Given',
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -167,14 +182,25 @@ class ProfileScreen extends ConsumerWidget {
                                 if (snapshot.hasData) {
                                   totalPosts = snapshot.data!.docs.length;
                                 }
-                                final qualityScore = totalPosts > 0 
-                                    ? ((profile.totalStars / totalPosts) * 100).round() 
-                                    : 85;
+                                // Quality score: average stars per post, scaled to 100%
+                                // Uses a log-based formula capped at 100:
+                                //   score = min(100, (avgStars / targetAvg) * 100)
+                                // where targetAvg = 5 stars per post is considered "perfect"
+                                int qualityScore;
+                                if (totalPosts == 0) {
+                                  qualityScore = 0;
+                                } else {
+                                  final avgStarsPerPost = profile.totalStars / totalPosts;
+                                  const targetAvg = 5.0; // 5 stars/post = 100%
+                                  qualityScore = ((avgStarsPerPost / targetAvg) * 100)
+                                      .round()
+                                      .clamp(0, 100);
+                                }
                                 return _buildStatCard(
                                   icon: Icons.verified,
                                   iconColor: const Color(0xFF4CAF50),
                                   value: '$qualityScore%',
-                                  label: 'Quality score',
+                                  label: 'Quality Score',
                                 );
                               },
                             ),

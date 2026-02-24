@@ -102,7 +102,7 @@ class _AppHeroSectionState extends State<AppHeroSection> {
 
           // Page view for feature slides
           SizedBox(
-            height: 140,
+            height: 160,
             child: PageView.builder(
               controller: _pageController,
               itemCount: _features.length,
@@ -163,20 +163,23 @@ class _AppHeroSectionState extends State<AppHeroSection> {
           ),
 
           // Dots indicator
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _features.length,
-              (i) => AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: _currentPage == i ? 20 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _currentPage == i
-                      ? const Color(0xFFD4AF37)
-                      : Colors.white30,
-                  borderRadius: BorderRadius.circular(3),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _features.length,
+                (i) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: _currentPage == i ? 20 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _currentPage == i
+                        ? const Color(0xFFD4AF37)
+                        : Colors.white30,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
               ),
             ),
@@ -184,7 +187,7 @@ class _AppHeroSectionState extends State<AppHeroSection> {
 
           // CTA
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
             child: SizedBox(
               width: double.infinity,
               height: 42,
