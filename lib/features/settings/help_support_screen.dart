@@ -26,138 +26,235 @@ class HelpSupportScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.cardBackground,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 12, 24, 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new,
+                        size: 20, color: AppColors.textPrimary),
+                    onPressed: () => context.pop(),
+                  ),
+                  Text(
+                    'Help & Support',
+                    style: AppTypography.headingH3.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Content
+            Expanded(
+              child: ListView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                children: [
+                  // Help section
+                  _SectionCard(
+                    headerTitle: 'Help',
+                    children: [
+                      _CardRow(
+                        iconPath:
+                            'assets/icons/CareKudos (15)/vuesax/twotone/message-question.png',
+                        title: 'FAQ',
+                        subtitle: 'Contact support to proceed',
+                        trailing: Icon(Icons.chevron_right,
+                            color: AppColors.neutral400, size: 22),
+                        onTap: () {
+                          // TODO: Open FAQ
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Contact section
+                  _SectionCard(
+                    headerTitle: 'Contact',
+                    children: [
+                      _CardRow(
+                        iconPath:
+                            'assets/icons/CareKudos (13)/vuesax/twotone/sms.png',
+                        title: 'Contact support',
+                        subtitle: 'support@carekudos.com',
+                        trailing: Icon(Icons.chevron_right,
+                            color: AppColors.neutral400, size: 22),
+                        onTap: () => _openEmailClient(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Version section
+                  _SectionCard(
+                    headerTitle: 'Contact',
+                    children: [
+                      _CardRow(
+                        iconPath:
+                            'assets/icons/CareKudos (15)/vuesax/twotone/info-circle.png',
+                        title: 'Version 1.0.0',
+                        trailing: Text(
+                          'Not provided',
+                          style: AppTypography.captionC1.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Legal documents section
+                  _SectionCard(
+                    headerTitle: 'Legal documents',
+                    children: [
+                      _CardRow(
+                        title: 'Privacy Policy',
+                        trailing: Icon(Icons.chevron_right,
+                            color: AppColors.neutral400, size: 22),
+                        onTap: () {
+                          // TODO: Open privacy policy
+                        },
+                      ),
+                      Divider(
+                          height: 1,
+                          color: AppColors.neutral200,
+                          indent: 16,
+                          endIndent: 16),
+                      _CardRow(
+                        title: 'Terms & Conditions',
+                        trailing: Icon(Icons.chevron_right,
+                            color: AppColors.neutral400, size: 22),
+                        onTap: () {
+                          // TODO: Open terms & conditions
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ],
         ),
-        title: Text(
-          'Help & Support',
-          style: AppTypography.headingH5,
-        ),
-      ),
-      body: ListView(
-        children: [
-          // Help section
-          _SectionHeader(title: 'Help'),
-          _NavigationItem(
-            title: 'FAQ',
-            subtitle: 'Contact support to proceed',
-            onTap: () {
-              // TODO: Open FAQ
-            },
-          ),
-          AppSpacing.verticalGap16,
-
-          // Contact section
-          _SectionHeader(title: 'Contact'),
-          _NavigationItem(
-            title: 'Contact support',
-            subtitle: 'support@carekudos.com',
-            onTap: () => _openEmailClient(context),
-          ),
-          AppSpacing.verticalGap16,
-
-          // Contact section (Version)
-          _SectionHeader(title: 'Contact'),
-          _InfoItem(
-            icon: Icons.info_outline,
-            title: 'Version 1.0.0',
-            trailing: 'Not provided',
-          ),
-          AppSpacing.verticalGap16,
-
-          // Legal documents
-          _SectionHeader(title: 'Legal documents'),
-          _NavigationItem(
-            title: 'Privacy Policy',
-            onTap: () {
-              // TODO: Open privacy policy
-            },
-          ),
-          _NavigationItem(
-            title: 'Terms & Conditions',
-            onTap: () {
-              // TODO: Open terms & conditions
-            },
-          ),
-          AppSpacing.verticalGap32,
-        ],
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
+class _SectionCard extends StatelessWidget {
+  final String headerTitle;
+  final List<Widget> children;
 
-  const _SectionHeader({required this.title});
+  const _SectionCard({
+    required this.headerTitle,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(
-        title,
-        style: AppTypography.headingH6.copyWith(
-          color: AppColors.textPrimary,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
+          child: Text(
+            headerTitle,
+            style: AppTypography.headingH5.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
-      ),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.neutral0,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.neutral200, width: 1),
+          ),
+          child: Column(
+            children: children,
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _NavigationItem extends StatelessWidget {
+class _CardRow extends StatelessWidget {
+  final String? iconPath;
   final String title;
   final String? subtitle;
-  final VoidCallback onTap;
+  final Widget? trailing;
+  final VoidCallback? onTap;
 
-  const _NavigationItem({
+  const _CardRow({
+    this.iconPath,
     required this.title,
     this.subtitle,
-    required this.onTap,
+    this.trailing,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(title, style: AppTypography.bodyB2),
-      subtitle: subtitle != null
-          ? Text(
-              subtitle!,
-              style: AppTypography.captionC1.copyWith(
-                color: AppColors.textTertiary,
-              ),
-            )
-          : null,
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textTertiary),
+    return InkWell(
       onTap: onTap,
-    );
-  }
-}
-
-class _InfoItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String trailing;
-
-  const _InfoItem({
-    required this.icon,
-    required this.title,
-    required this.trailing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.textSecondary),
-      title: Text(title, style: AppTypography.bodyB2),
-      trailing: Text(
-        trailing,
-        style: AppTypography.captionC1.copyWith(
-          color: AppColors.textTertiary,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            if (iconPath != null) ...[
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.neutral100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Image.asset(
+                    iconPath!,
+                    width: 22,
+                    height: 22,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.bodyB3.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: AppTypography.captionC1.copyWith(
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (trailing != null) trailing!,
+          ],
         ),
       ),
     );

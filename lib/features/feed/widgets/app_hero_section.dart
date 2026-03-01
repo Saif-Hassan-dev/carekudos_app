@@ -200,20 +200,26 @@ class _AppHeroSectionState extends State<AppHeroSection> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add, size: 18),
-                    SizedBox(width: 6),
-                    Text(
-                      'Share an Achievement',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.add, size: 18),
+                      SizedBox(width: 6),
+                      Text(
+                        'Share an Achievement',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
