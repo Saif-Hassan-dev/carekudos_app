@@ -22,70 +22,88 @@ class NotificationsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.cardBackground,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Notifications',
-          style: AppTypography.headingH5,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await NotificationService.markAllAsRead(user.uid);
-            },
-            child: Text(
-              'Mark all read',
-              style: AppTypography.actionA2.copyWith(color: AppColors.primary),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Notifications',
+                    style: AppTypography.headingH2.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () async {
+                      await NotificationService.markAllAsRead(user.uid);
+                    },
+                    child: Image.asset(
+                      'assets/icons/CareKudos (15)/vuesax/twotone/edit.png',
+                      width: 24,
+                      height: 24,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: NotificationService.getUserNotifications(user.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+            // Notification list
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: NotificationService.getUserNotifications(user.uid),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('Error loading notifications: ${snapshot.error}'),
-            );
-          }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                          'Error loading notifications: ${snapshot.error}'),
+                    );
+                  }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return _buildEmptyState();
-          }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return _buildEmptyState();
+                  }
 
-          // Sort notifications by createdAt in-memory (client-side)
-          final notifications = snapshot.data!.docs.toList();
-          notifications.sort((a, b) {
-            final aData = a.data() as Map<String, dynamic>;
-            final bData = b.data() as Map<String, dynamic>;
-            final aTime = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
-            final bTime = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
-            return bTime.compareTo(aTime); // Descending order (newest first)
-          });
+                  // Sort notifications by createdAt in-memory (client-side)
+                  final notifications = snapshot.data!.docs.toList();
+                  notifications.sort((a, b) {
+                    final aData = a.data() as Map<String, dynamic>;
+                    final bData = b.data() as Map<String, dynamic>;
+                    final aTime = (aData['createdAt'] as Timestamp?)
+                            ?.toDate() ??
+                        DateTime(2000);
+                    final bTime = (bData['createdAt'] as Timestamp?)
+                            ?.toDate() ??
+                        DateTime(2000);
+                    return bTime
+                        .compareTo(aTime); // Descending order (newest first)
+                  });
 
-          return ListView.separated(
-            padding: AppSpacing.vertical16,
-            itemCount: notifications.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final doc = notifications[index];
-              final data = doc.data() as Map<String, dynamic>;
-              return _NotificationTile(
-                notificationId: doc.id,
-                data: data,
-              );
-            },
-          );
-        },
+                  return ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: notifications.length,
+                    itemBuilder: (context, index) {
+                      final doc = notifications[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      return _NotificationTile(
+                        notificationId: doc.id,
+                        data: data,
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -95,9 +113,10 @@ class NotificationsScreen extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.notifications_off_outlined,
-            size: 80,
+          Image.asset(
+            'assets/icons/CareKudos (16)/vuesax/twotone/notification.png',
+            width: 80,
+            height: 80,
             color: AppColors.neutral300,
           ),
           AppSpacing.verticalGap16,
@@ -134,65 +153,75 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final type = _getNotificationType(data['type'] as String?);
     final title = data['title'] as String? ?? 'Notification';
-    final message = data['message'] as String? ?? '';
     final isUnread = !(data['isRead'] as bool? ?? false);
     final createdAt = data['createdAt'] as Timestamp?;
     final timeAgo = createdAt != null
         ? Formatters.timeAgo(createdAt.toDate())
         : 'Just now';
 
-    return Container(
-      color: isUnread
-          ? AppColors.primaryLight.withValues(alpha: 0.3)
-          : null,
-      child: ListTile(
-        contentPadding: AppSpacing.horizontal16,
-        leading: _buildIcon(type),
-        title: Text(
-          title,
-          style: AppTypography.bodyB3.copyWith(
-            fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
+    return InkWell(
+      onTap: () async {
+        // Mark as read
+        await NotificationService.markAsRead(notificationId);
+
+        // Navigate to related content if available
+        final relatedPostId = data['relatedPostId'] as String?;
+        if (relatedPostId != null && context.mounted) {
+          context.push('/post/$relatedPostId');
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: AppColors.neutral200,
+              width: 0.5,
+            ),
           ),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            AppSpacing.verticalGap4,
-            Text(
-              message,
-              style: AppTypography.captionC1.copyWith(
-                color: AppColors.textSecondary,
+            // Icon
+            _buildIcon(type),
+            const SizedBox(width: 16),
+            // Text content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.bodyB3.copyWith(
+                      fontWeight:
+                          isUnread ? FontWeight.w600 : FontWeight.w400,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    timeAgo,
+                    style: AppTypography.captionC1.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
               ),
             ),
-            AppSpacing.verticalGap4,
-            Text(
-              timeAgo,
-              style: AppTypography.captionC2.copyWith(
-                color: AppColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
-        trailing: isUnread
-            ? Container(
-                width: 8,
-                height: 8,
+            // Unread indicator
+            if (isUnread)
+              Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.only(left: 12),
                 decoration: const BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),
-              )
-            : null,
-        onTap: () async {
-          // Mark as read
-          await NotificationService.markAsRead(notificationId);
-          
-          // Navigate to related content if available
-          final relatedPostId = data['relatedPostId'] as String?;
-          if (relatedPostId != null && context.mounted) {
-            context.push('/post/$relatedPostId');
-          }
-        },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -217,49 +246,46 @@ class _NotificationTile extends StatelessWidget {
   }
 
   Widget _buildIcon(NotificationType type) {
-    IconData icon;
-    Color color;
-    Color bgColor;
+    String iconPath;
 
     switch (type) {
       case NotificationType.star:
-        icon = Icons.star;
-        color = AppColors.secondary;
-        bgColor = AppColors.secondaryLight;
+        iconPath = 'assets/icons/CareKudos (15)/vuesax/twotone/star.png';
       case NotificationType.comment:
-        icon = Icons.chat_bubble_outline;
-        color = AppColors.primary;
-        bgColor = AppColors.primaryLight;
+        iconPath =
+            'assets/icons/CareKudos (13)/vuesax/twotone/message.png';
       case NotificationType.achievement:
-        icon = Icons.emoji_events;
-        color = AppColors.success;
-        bgColor = AppColors.successLight;
+        iconPath =
+            'assets/icons/CareKudos (15)/vuesax/twotone/medal-star.png';
       case NotificationType.reminder:
-        icon = Icons.schedule;
-        color = AppColors.tertiary;
-        bgColor = AppColors.tertiaryLight;
+        iconPath =
+            'assets/icons/CareKudos (16)/vuesax/twotone/clock.png';
       case NotificationType.postApproved:
-        icon = Icons.check_circle;
-        color = AppColors.success;
-        bgColor = AppColors.successLight;
+        iconPath =
+            'assets/icons/CareKudos (16)/vuesax/twotone/notification-status.png';
       case NotificationType.milestone:
-        icon = Icons.military_tech;
-        color = AppColors.secondary;
-        bgColor = AppColors.secondaryLight;
+        iconPath =
+            'assets/icons/CareKudos (15)/vuesax/twotone/magic-star.png';
       case NotificationType.system:
-        icon = Icons.info_outline;
-        color = AppColors.textSecondary;
-        bgColor = AppColors.surfaceVariant;
+        iconPath =
+            'assets/icons/CareKudos (16)/vuesax/twotone/notification.png';
     }
 
     return Container(
-      width: 48,
-      height: 48,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: AppColors.neutral100,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: color, size: 24),
+      child: Center(
+        child: Image.asset(
+          iconPath,
+          width: 22,
+          height: 22,
+          color: AppColors.textSecondary,
+        ),
+      ),
     );
   }
 }

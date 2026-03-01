@@ -64,6 +64,7 @@ class _AppHeroSectionState extends State<AppHeroSection> {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -86,23 +87,22 @@ class _AppHeroSectionState extends State<AppHeroSection> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Dismiss button row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (widget.onDismiss != null)
-                GestureDetector(
-                  onTap: widget.onDismiss,
-                  child: const Padding(
-                    padding: EdgeInsets.only(top: 12, right: 14),
-                    child: Icon(Icons.close, color: Colors.white54, size: 20),
-                  ),
-                ),
-            ],
+          Align(
+            alignment: Alignment.topRight,
+            child: widget.onDismiss != null
+                ? GestureDetector(
+                    onTap: widget.onDismiss,
+                    child: const Padding(
+                      padding: EdgeInsets.only(top: 10, right: 12),
+                      child: Icon(Icons.close, color: Colors.white54, size: 18),
+                    ),
+                  )
+                : const SizedBox(height: 10),
           ),
 
           // Page view for feature slides
           SizedBox(
-            height: 160,
+            height: 110,
             child: PageView.builder(
               controller: _pageController,
               itemCount: _features.length,
@@ -124,7 +124,7 @@ class _AppHeroSectionState extends State<AppHeroSection> {
                         ),
                         child: Icon(f.icon, color: f.iconColor, size: 30),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 14),
                       // Text
                       Expanded(
                         child: Column(
@@ -134,20 +134,20 @@ class _AppHeroSectionState extends State<AppHeroSection> {
                             Text(
                               f.title,
                               style: const TextStyle(
-                                fontSize: 17,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
                                 letterSpacing: -0.2,
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 4),
                             Text(
                               f.description,
                               style: const TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w400,
                                 color: Colors.white70,
-                                height: 1.4,
+                                height: 1.35,
                               ),
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
@@ -164,7 +164,7 @@ class _AppHeroSectionState extends State<AppHeroSection> {
 
           // Dots indicator
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
@@ -187,10 +187,10 @@ class _AppHeroSectionState extends State<AppHeroSection> {
 
           // CTA
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: SizedBox(
               width: double.infinity,
-              height: 42,
+              height: 40,
               child: ElevatedButton(
                 onPressed: widget.onCreatePost,
                 style: ElevatedButton.styleFrom(
