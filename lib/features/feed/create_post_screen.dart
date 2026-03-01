@@ -132,8 +132,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       return;
     }
 
-    if (_gdprStatus != GdprStatus.safe) {
-      context.showErrorSnackBar('Please fix GDPR issues first');
+    if (_gdprStatus == GdprStatus.unsafe) {
+      context.showErrorSnackBar('Please fix GDPR issues before posting');
       return;
     }
 

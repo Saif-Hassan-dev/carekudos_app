@@ -37,17 +37,18 @@ class AppSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveActiveColor = activeColor ?? AppColors.sky500;
+    final effectiveActiveColor = activeColor ?? AppColors.primary;
     final effectiveInactiveColor = inactiveColor ?? AppColors.neutral300;
 
     return GestureDetector(
       onTap: disabled ? null : () => onChanged?.call(!value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 44,
-        height: 24,
+        width: 50,
+        height: 28,
+        padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           color: disabled
               ? AppColors.neutral200
               : (value ? effectiveActiveColor : effectiveInactiveColor),
@@ -56,9 +57,8 @@ class AppSwitch extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           alignment: value ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
-            margin: const EdgeInsets.all(2),
-            width: 20,
-            height: 20,
+            width: 24,
+            height: 24,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: disabled ? AppColors.neutral400 : AppColors.neutral0,

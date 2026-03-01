@@ -243,38 +243,46 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                       return _buildEmptyState(context);
                     }
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      itemCount: snapshot.data!.docs.length,
-                      addAutomaticKeepAlives: true,
-                      itemBuilder: (context, index) {
-                        final doc = snapshot.data!.docs[index];
-                        final data = doc.data() as Map<String, dynamic>;
-
-                        final currentUser = ref.read(currentUserProvider);
-                        final starredBy = data['starredBy'] as List<dynamic>? ?? [];
-                        final hasGivenStar = currentUser != null &&
-                            starredBy.contains(currentUser.uid);
-
-                        return RepaintBoundary(
-                          child: _PostCard(
-                          key: ValueKey(doc.id),
-                          postId: doc.id,
-                          authorId: data['authorId'] ?? '',
-                          authorName: data['authorName'] ?? 'Anonymous',
-                          authorRole: data['authorRole'] ?? 'care_worker',
-                          content: data['content'] ?? '',
-                          category: data['category'] ?? 'General',
-                          stars: data['stars'] ?? 0,
-                          createdAt: data['createdAt'] != null
-                              ? (data['createdAt'] as Timestamp).toDate()
-                              : DateTime.now(),
-                          initialHasGivenStar: hasGivenStar,
-                          onStarGiven: _showStarGivenSuccess,
-                        ),
-                        );
+                    return RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: () async {
+                        setState(() {});
+                        await Future.delayed(const Duration(milliseconds: 500));
                       },
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        itemCount: snapshot.data!.docs.length,
+                        addAutomaticKeepAlives: true,
+                        itemBuilder: (context, index) {
+                          final doc = snapshot.data!.docs[index];
+                          final data = doc.data() as Map<String, dynamic>;
+
+                          final currentUser = ref.read(currentUserProvider);
+                          final starredBy = data['starredBy'] as List<dynamic>? ?? [];
+                          final hasGivenStar = currentUser != null &&
+                              starredBy.contains(currentUser.uid);
+
+                          return RepaintBoundary(
+                            child: _PostCard(
+                            key: ValueKey(doc.id),
+                            postId: doc.id,
+                            authorId: data['authorId'] ?? '',
+                            authorName: data['authorName'] ?? 'Anonymous',
+                            authorRole: data['authorRole'] ?? 'care_worker',
+                            content: data['content'] ?? '',
+                            category: data['category'] ?? 'General',
+                            stars: data['stars'] ?? 0,
+                            createdAt: data['createdAt'] != null
+                                ? (data['createdAt'] as Timestamp).toDate()
+                                : DateTime.now(),
+                            initialHasGivenStar: hasGivenStar,
+                            onStarGiven: _showStarGivenSuccess,
+                          ),
+                          );
+                        },
+                      ),
                     );
                   },
                 ),

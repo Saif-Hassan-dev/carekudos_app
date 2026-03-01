@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/theme.dart';
+import '../../core/widgets/app_switch.dart';
 
 class SettingsNotificationsScreen extends ConsumerStatefulWidget {
   const SettingsNotificationsScreen({super.key});
@@ -122,10 +123,9 @@ class _ToggleItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       title: Text(title, style: AppTypography.bodyB2),
-      trailing: Switch(
+      trailing: AppSwitch(
         value: value,
         onChanged: onChanged,
-        activeColor: AppColors.primary,
       ),
     );
   }
@@ -177,10 +177,9 @@ class _ToggleWithSubtitle extends StatelessWidget {
         subtitle,
         style: AppTypography.captionC1.copyWith(color: AppColors.textTertiary),
       ),
-      trailing: Switch(
+      trailing: AppSwitch(
         value: value,
         onChanged: onChanged,
-        activeColor: AppColors.primary,
       ),
     );
   }

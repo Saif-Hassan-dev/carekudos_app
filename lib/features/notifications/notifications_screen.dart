@@ -172,6 +172,7 @@ class _NotificationTile extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
+          color: isUnread ? const Color(0xFFEEF3FB) : null,
           border: Border(
             bottom: BorderSide(
               color: AppColors.neutral200,
