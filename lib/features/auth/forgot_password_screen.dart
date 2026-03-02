@@ -349,6 +349,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               _buildStep('3', 'Create a new password'),
               const SizedBox(height: 8),
               _buildStep('4', 'Return here and log in'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 18, color: Color(0xFF888888)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Can\'t find it? Check your spam or junk folder.',
+                      style: AppTypography.captionC1.copyWith(
+                        color: const Color(0xFF888888),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
