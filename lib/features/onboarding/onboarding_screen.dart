@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'screens/gdpr_explanation_screen.dart';
-import 'screens/gdpr_training_screen.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/registration_screen.dart';
 import '../../core/services/storage_service.dart';
@@ -14,7 +12,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-// Onboarding flow: Quiz Intro → Quiz → Role Selection → Create Account
+// Onboarding flow: Role Selection → Registration → (then GDPR training via /gdpr-training route)
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   late PageController _pageController;
 
@@ -37,11 +35,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  Future<void> _completeOnboarding() async {
-    // Mark onboarding as complete
+  Future<void> _onRegistrationComplete() async {
     await StorageService.setOnboardingComplete(true);
-    // Navigate to feed after onboarding is complete
-    if (mounted) context.go('/feed');
+    if (mounted) context.go('/gdpr-training');
   }
 
   @override
@@ -51,10 +47,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
         children: [
-          GdprExplanationScreen(onNext: _nextPage), // Quiz Intro
-          GdprTrainingScreen(onNext: _nextPage),     // Quiz
-          RoleSelectionScreen(onNext: _nextPage),    // Role Selection
-          RegistrationScreen(onNext: _completeOnboarding), // Create Account (all info + profile)
+          RoleSelectionScreen(onNext: _nextPage),
+          RegistrationScreen(onNext: _onRegistrationComplete),
         ],
       ),
     );

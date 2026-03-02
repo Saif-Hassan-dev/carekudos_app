@@ -26,6 +26,7 @@ class UserProfile {
   final List<String> managerIds;
   final bool gdprConsentGiven;
   final DateTime? gdprConsentTimestamp;
+  final bool gdprTrainingCompleted;
 
   // Notification preferences
   final bool notifyStarsReceived;
@@ -57,6 +58,7 @@ class UserProfile {
     this.managerIds = const [],
     this.gdprConsentGiven = false,
     this.gdprConsentTimestamp,
+    this.gdprTrainingCompleted = false,
     this.notifyStarsReceived = true,
     this.notifyMentions = true,
     this.notifySystemUpdates = true,
@@ -96,6 +98,7 @@ class UserProfile {
       gdprConsentTimestamp: data['gdprConsentTimestamp'] != null
           ? (data['gdprConsentTimestamp'] as Timestamp).toDate()
           : null,
+      gdprTrainingCompleted: data['gdprTrainingCompleted'] ?? false,
       notifyStarsReceived: data['notifyStarsReceived'] ?? true,
       notifyMentions: data['notifyMentions'] ?? true,
       notifySystemUpdates: data['notifySystemUpdates'] ?? true,

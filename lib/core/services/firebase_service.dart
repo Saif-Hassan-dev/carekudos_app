@@ -69,6 +69,7 @@ class FirebaseService {
         // GDPR consent
         'gdprConsentGiven': gdprConsent,
         'gdprConsentTimestamp': gdprConsent ? FieldValue.serverTimestamp() : null,
+        'gdprTrainingCompleted': false,
 
         // New profile fields
         'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
@@ -94,6 +95,20 @@ class FirebaseService {
       });
     } catch (e) {
       throw Exception('Failed to record GDPR consent: $e');
+    }
+  }
+
+  /// Mark GDPR training quiz as completed
+  static Future<void> completeGdprTraining(String userId) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'gdprTrainingCompleted': true,
+        'gdprConsentGiven': true,
+        'gdprConsentTimestamp': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to complete GDPR training: $e');
     }
   }
 

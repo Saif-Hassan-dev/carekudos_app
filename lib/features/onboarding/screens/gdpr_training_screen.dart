@@ -20,22 +20,34 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
 
   final List<Map<String, dynamic>> quizQuestions = [
     {
-      'question': 'Is it recommended not to share the patient\'s name in an recognition post?',
-      'correctAnswer': true, // Yes, it IS recommended NOT to share
-      'correctMessage': 'Correct. Patient names must never be shared.',
-      'incorrectMessage': 'Incorrect. Please try again.',
+      'question': 'Should you avoid sharing a patient\'s name in a recognition post?',
+      'correctAnswer': true,
+      'correctMessage': 'Correct! Under GDPR, patient names are personal data and must never be shared in recognition posts to protect their privacy.',
+      'incorrectMessage': 'Not quite. GDPR classifies patient names as personal data. Sharing them without consent is a data protection breach.',
     },
     {
       'question': 'Can you mention room numbers when recognising care?',
-      'correctAnswer': false, // No, you cannot
-      'correctMessage': 'Correct. Room numbers are personal identifiers.',
-      'incorrectMessage': 'Incorrect. Please try again.',
+      'correctAnswer': false,
+      'correctMessage': 'Correct! Room numbers can identify individuals indirectly, making them personal data under GDPR. Always avoid location-specific details.',
+      'incorrectMessage': 'Not quite. Room numbers are considered indirect identifiers under GDPR because they can be used to identify a specific person.',
     },
     {
       'question': 'Is it acceptable to say "A resident enjoyed the activity"?',
-      'correctAnswer': true, // Yes, this is acceptable
-      'correctMessage': 'Correct. Generic terms protect privacy.',
-      'incorrectMessage': 'Incorrect. Please try again.',
+      'correctAnswer': true,
+      'correctMessage': 'Correct! Using generic, non-identifying language like "a resident" is GDPR-compliant and protects individual privacy.',
+      'incorrectMessage': 'Not quite. This phrasing is actually safe — "a resident" is generic and does not identify any individual, which is GDPR-compliant.',
+    },
+    {
+      'question': 'Is it okay to share a colleague\'s medical condition in a post praising their dedication?',
+      'correctAnswer': false,
+      'correctMessage': 'Correct! Health data is classified as "special category data" under GDPR (Article 9) and requires explicit consent to share.',
+      'incorrectMessage': 'Not quite. Medical conditions are special category data under GDPR and must never be shared without the individual\'s explicit consent.',
+    },
+    {
+      'question': 'Can you post a photo of a care home resident without their written consent?',
+      'correctAnswer': false,
+      'correctMessage': 'Correct! Photos are personal data. GDPR requires clear, informed consent before sharing images of identifiable individuals.',
+      'incorrectMessage': 'Not quite. Photographs are personal data under GDPR. You must obtain written consent before sharing any identifiable images.',
     },
   ];
 
@@ -43,9 +55,9 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId != null) {
       try {
-        await FirebaseService.recordGdprConsent(userId);
+        await FirebaseService.completeGdprTraining(userId);
       } catch (e) {
-        debugPrint('Error recording GDPR consent: $e');
+        debugPrint('Error completing GDPR training: $e');
       }
     }
     widget.onNext();

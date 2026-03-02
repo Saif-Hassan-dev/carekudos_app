@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/welcome_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/onboarding/gdpr_training_flow.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/feed/create_post_screen.dart';
@@ -44,9 +45,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/onboarding'; // Force onboarding completion
         }
 
-        if (hasProfile &&
+        // Profile exists but GDPR training not completed — force quiz
+        if (hasProfile && !(profile!.gdprTrainingCompleted) &&
+            state.matchedLocation != '/gdpr-training') {
+          return '/gdpr-training';
+        }
+
+        // Fully onboarded — redirect away from auth/onboarding screens
+        if (hasProfile && profile.gdprTrainingCompleted &&
             (state.matchedLocation == '/welcome' ||
-                state.matchedLocation == '/login')) {
+                state.matchedLocation == '/login' ||
+                state.matchedLocation == '/onboarding' ||
+                state.matchedLocation == '/gdpr-training')) {
           return '/feed';
         }
       } else {
@@ -68,7 +78,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             state.matchedLocation == '/create-post' ||
             state.matchedLocation == '/notifications' ||
             state.matchedLocation.startsWith('/post/') ||
-            state.matchedLocation.startsWith('/settings')) {
+            state.matchedLocation.startsWith('/settings') ||
+            state.matchedLocation == '/gdpr-training') {
           return hasSeenOnboarding ? '/login' : '/welcome';
         }
       }
@@ -99,6 +110,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/gdpr-training',
+        builder: (context, state) => const GdprTrainingFlow(),
       ),
       GoRoute(path: '/feed', builder: (context, state) => const FeedScreen()),
       GoRoute(

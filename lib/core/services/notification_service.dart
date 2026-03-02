@@ -15,7 +15,36 @@ enum NotificationType {
 class NotificationService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Create a notification for a user
+  /// Check if a user has this notification type enabled.
+  /// Returns false (suppress) when the user explicitly turned it off.
+  static Future<bool> _isNotificationEnabled(
+    String userId,
+    NotificationType type,
+  ) async {
+    try {
+      final doc = await _db.collection('users').doc(userId).get();
+      if (!doc.exists) return true; // default allow
+      final data = doc.data() as Map<String, dynamic>;
+
+      switch (type) {
+        case NotificationType.star:
+          return data['notifyStarsReceived'] ?? true;
+        case NotificationType.comment:
+          return data['notifyMentions'] ?? true;
+        case NotificationType.system:
+        case NotificationType.reminder:
+        case NotificationType.postApproved:
+        case NotificationType.achievement:
+        case NotificationType.milestone:
+          return data['notifySystemUpdates'] ?? true;
+      }
+    } catch (e) {
+      debugPrint('Error checking notification preference: $e');
+      return true; // default allow on error
+    }
+  }
+
+  /// Create a notification for a user (respects user preferences)
   static Future<void> createNotification({
     required String userId,
     required NotificationType type,
@@ -27,6 +56,15 @@ class NotificationService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
+      // Check if the user wants this type of notification
+      final enabled = await _isNotificationEnabled(userId, type);
+      if (!enabled) {
+        debugPrint(
+          'Notification suppressed for user $userId (type: ${type.name})',
+        );
+        return;
+      }
+
       await _db.collection('notifications').add({
         'userId': userId,
         'type': type.name,
