@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/welcome_screen.dart';
 import '../features/auth/login_screen.dart';
+import '../features/auth/forgot_password_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/onboarding/gdpr_training_flow.dart';
 import '../features/splash/splash_screen.dart';
@@ -62,7 +63,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       } else {
         // User is NOT logged in
         // If they haven't completed onboarding, show welcome screen
-        if (!hasSeenOnboarding && state.matchedLocation != '/welcome' && state.matchedLocation != '/onboarding') {
+        if (!hasSeenOnboarding && state.matchedLocation != '/welcome' && state.matchedLocation != '/onboarding' && state.matchedLocation != '/forgot-password') {
           return '/welcome';
         }
         
@@ -73,13 +74,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         
         // If they're trying to access protected routes without login
-        if (state.matchedLocation == '/feed' || 
+        // (excluding public routes: login, welcome, onboarding, forgot-password)
+        if (state.matchedLocation != '/login' &&
+            state.matchedLocation != '/welcome' &&
+            state.matchedLocation != '/onboarding' &&
+            state.matchedLocation != '/forgot-password' &&
+            (state.matchedLocation == '/feed' || 
             state.matchedLocation == '/profile' ||
             state.matchedLocation == '/create-post' ||
             state.matchedLocation == '/notifications' ||
             state.matchedLocation.startsWith('/post/') ||
             state.matchedLocation.startsWith('/settings') ||
-            state.matchedLocation == '/gdpr-training') {
+            state.matchedLocation == '/gdpr-training')) {
           return hasSeenOnboarding ? '/login' : '/welcome';
         }
       }
@@ -107,6 +113,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const WelcomeScreen(),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
