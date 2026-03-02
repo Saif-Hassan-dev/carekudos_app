@@ -96,4 +96,55 @@ class FirebaseService {
       throw Exception('Failed to record GDPR consent: $e');
     }
   }
+
+  /// Update user's profile photo (base64-encoded)
+  static Future<void> updateProfilePhoto(
+      String userId, String? base64Photo) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'profilePhotoBase64': base64Photo,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to update profile photo: $e');
+    }
+  }
+
+  /// Update notification preferences
+  static Future<void> updateNotificationPreferences({
+    required String userId,
+    required bool starsReceived,
+    required bool mentions,
+    required bool systemUpdates,
+    required bool emailNotifications,
+    required bool pushNotifications,
+  }) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'notifyStarsReceived': starsReceived,
+        'notifyMentions': mentions,
+        'notifySystemUpdates': systemUpdates,
+        'emailNotifications': emailNotifications,
+        'pushNotifications': pushNotifications,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to update notification preferences: $e');
+    }
+  }
+
+  /// Update marketing opt-in preference
+  static Future<void> updateMarketingOptIn({
+    required String userId,
+    required bool optIn,
+  }) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'agreeToUpdates': optIn,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to update marketing preference: $e');
+    }
+  }
 }

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../theme/theme.dart';
 
@@ -103,6 +104,7 @@ class SelectionCard extends StatelessWidget {
 class FeedPostCard extends StatelessWidget {
   final String authorName;
   final String authorAvatarUrl;
+  final Uint8List? authorPhotoBytes;
   final String recipientName;
   final String timeAgo;
   final String message;
@@ -119,6 +121,7 @@ class FeedPostCard extends StatelessWidget {
     super.key,
     required this.authorName,
     required this.authorAvatarUrl,
+    this.authorPhotoBytes,
     required this.recipientName,
     required this.timeAgo,
     required this.message,
@@ -150,11 +153,13 @@ class FeedPostCard extends StatelessWidget {
                   // Author avatar
                   CircleAvatar(
                     radius: 20,
-                    backgroundImage: authorAvatarUrl.isNotEmpty
-                        ? NetworkImage(authorAvatarUrl)
-                        : null,
+                    backgroundImage: authorPhotoBytes != null
+                        ? MemoryImage(authorPhotoBytes!)
+                        : (authorAvatarUrl.isNotEmpty
+                            ? NetworkImage(authorAvatarUrl)
+                            : null),
                     backgroundColor: AppColors.neutral200,
-                    child: authorAvatarUrl.isEmpty
+                    child: authorPhotoBytes == null && authorAvatarUrl.isEmpty
                         ? Text(
                             authorName.isNotEmpty ? authorName[0].toUpperCase() : '?',
                             style: AppTypography.headingH6,

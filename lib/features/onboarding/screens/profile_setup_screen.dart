@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/providers/onboarding_provider.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../core/utils/validators.dart';
@@ -25,6 +28,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _notificationsEnabled = true;
   bool _isLoading = false;
+  Uint8List? _profilePhotoBytes;
+  String? _profilePhotoBase64;
 
   @override
   void initState() {
@@ -40,6 +45,34 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     _lastNameController.dispose();
     _jobTitleController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+      if (picked == null) return;
+
+      final bytes = await picked.readAsBytes();
+      if (bytes.lengthInBytes > 5 * 1024 * 1024) {
+        if (mounted) context.showErrorSnackBar('Photo must be under 5 MB');
+        return;
+      }
+
+      setState(() {
+        _profilePhotoBytes = bytes;
+        _profilePhotoBase64 = base64Encode(bytes);
+      });
+    } catch (e) {
+      if (mounted) {
+        context.showErrorSnackBar('Could not load photo. Please try again.');
+      }
+    }
   }
 
   Future<void> _finishSetup() async {
@@ -63,6 +96,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         lastName: _lastNameController.text.trim(),
         role: onboardingData.selectedRole ?? 'care_worker',
         jobTitle: _jobTitleController.text.trim(),
+        profilePhotoBase64: _profilePhotoBase64,
       );
 
       // Clear onboarding state
@@ -95,17 +129,23 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 ),
                 const SizedBox(height: 32),
                 GestureDetector(
-                  onTap: () {
-                    // TODO: Implement photo picker
-                  },
+                  onTap: _pickProfilePhoto,
                   child: Container(
                     height: 120,
                     width: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.grey[300],
+                      image: _profilePhotoBytes != null
+                          ? DecorationImage(
+                              image: MemoryImage(_profilePhotoBytes!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
-                    child: const Icon(Icons.camera_alt, size: 40),
+                    child: _profilePhotoBytes == null
+                        ? const Icon(Icons.camera_alt, size: 40)
+                        : null,
                   ),
                 ),
                 const SizedBox(height: 32),

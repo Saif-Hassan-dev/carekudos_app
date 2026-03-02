@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/auth/permissions_provider.dart';
+import '../../core/services/firebase_service.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/app_switch.dart';
 
@@ -23,68 +25,136 @@ class _SettingsNotificationsScreenState
   bool _emailNotifications = true;
   bool _pushNotifications = true;
 
+  bool _loaded = false;
+
+  void _loadFromProfile(UserProfile profile) {
+    if (_loaded) return;
+    _loaded = true;
+    _starsReceived = profile.notifyStarsReceived;
+    _mentions = profile.notifyMentions;
+    _systemUpdates = profile.notifySystemUpdates;
+    _emailNotifications = profile.emailNotifications;
+    _pushNotifications = profile.pushNotifications;
+  }
+
+  Future<void> _savePreferences(String userId) async {
+    try {
+      await FirebaseService.updateNotificationPreferences(
+        userId: userId,
+        starsReceived: _starsReceived,
+        mentions: _mentions,
+        systemUpdates: _systemUpdates,
+        emailNotifications: _emailNotifications,
+        pushNotifications: _pushNotifications,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save preferences')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.cardBackground,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Notifications',
-          style: AppTypography.headingH5,
-        ),
+    final profileAsync = ref.watch(userProfileProvider);
+
+    return profileAsync.when(
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       ),
-      body: ListView(
-        children: [
-          // In-app notifications section
-          _SectionHeader(title: 'In-app notifications'),
-          _ToggleItem(
-            title: 'Stars received',
-            value: _starsReceived,
-            onChanged: (v) => setState(() => _starsReceived = v),
+      error: (_, __) => Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
           ),
-          _ToggleItem(
-            title: 'Mentions',
-            value: _mentions,
-            onChanged: (v) => setState(() => _mentions = v),
-          ),
-          _ToggleItem(
-            title: 'System updates',
-            value: _systemUpdates,
-            onChanged: (v) => setState(() => _systemUpdates = v),
-          ),
-          Padding(
-            padding: AppSpacing.horizontal16,
-            child: Text(
-              'These affect in-app notifications only.',
-              style: AppTypography.captionC2.copyWith(
-                color: AppColors.textTertiary,
-              ),
+          title: const Text('Notifications'),
+        ),
+        body: const Center(child: Text('Failed to load preferences')),
+      ),
+      data: (profile) {
+        if (profile != null) _loadFromProfile(profile);
+        final userId = profile?.uid;
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.cardBackground,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.pop(),
+            ),
+            title: Text(
+              'Notifications',
+              style: AppTypography.headingH5,
             ),
           ),
-          AppSpacing.verticalGap24,
+          body: ListView(
+            children: [
+              // In-app notifications section
+              _SectionHeader(title: 'In-app notifications'),
+              _ToggleItem(
+                title: 'Stars received',
+                value: _starsReceived,
+                onChanged: (v) {
+                  setState(() => _starsReceived = v);
+                  if (userId != null) _savePreferences(userId);
+                },
+              ),
+              _ToggleItem(
+                title: 'Mentions',
+                value: _mentions,
+                onChanged: (v) {
+                  setState(() => _mentions = v);
+                  if (userId != null) _savePreferences(userId);
+                },
+              ),
+              _ToggleItem(
+                title: 'System updates',
+                value: _systemUpdates,
+                onChanged: (v) {
+                  setState(() => _systemUpdates = v);
+                  if (userId != null) _savePreferences(userId);
+                },
+              ),
+              Padding(
+                padding: AppSpacing.horizontal16,
+                child: Text(
+                  'These affect in-app notifications only.',
+                  style: AppTypography.captionC2.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+              AppSpacing.verticalGap24,
 
-          // In-app notifications section 2
-          _SectionHeader(title: 'In-app notifications'),
-          _ToggleItem(
-            title: 'Email notifications',
-            value: _emailNotifications,
-            onChanged: (v) => setState(() => _emailNotifications = v),
+              // Communication section
+              _SectionHeader(title: 'Communication'),
+              _ToggleItem(
+                title: 'Email notifications',
+                value: _emailNotifications,
+                onChanged: (v) {
+                  setState(() => _emailNotifications = v);
+                  if (userId != null) _savePreferences(userId);
+                },
+              ),
+              _ToggleWithSubtitle(
+                title: 'Push notifications',
+                subtitle: 'Choose how you want to be notified.',
+                value: _pushNotifications,
+                onChanged: (v) {
+                  setState(() => _pushNotifications = v);
+                  if (userId != null) _savePreferences(userId);
+                },
+              ),
+              AppSpacing.verticalGap32,
+            ],
           ),
-          _ToggleWithSubtitle(
-            title: 'Push notifications',
-            subtitle: 'Choose how you want to be notified.',
-            value: _pushNotifications,
-            onChanged: (v) => setState(() => _pushNotifications = v),
-          ),
-          AppSpacing.verticalGap32,
-        ],
-      ),
+        );
+      },
     );
   }
 }

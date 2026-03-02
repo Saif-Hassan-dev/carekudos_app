@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../../core/theme/theme.dart';
@@ -9,6 +13,8 @@ import '../../core/widgets/custom_text_field.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/utils/constants.dart';
 import '../../core/utils/extensions.dart';
+import '../../core/services/firebase_service.dart';
+import '../../core/providers/user_photo_provider.dart';
 
 class AccountSettingsScreen extends ConsumerStatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -24,6 +30,42 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   bool _isLoading = false;
+
+  Future<void> _pickAndUploadPhoto() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+      if (picked == null) return;
+
+      final bytes = await picked.readAsBytes();
+      if (bytes.lengthInBytes > 5 * 1024 * 1024) {
+        if (mounted) context.showErrorSnackBar('Photo must be under 5 MB');
+        return;
+      }
+
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return;
+
+      final base64Photo = base64Encode(bytes);
+      await FirebaseService.updateProfilePhoto(userId, base64Photo);
+
+      // Clear cached photo so it reloads everywhere
+      invalidateUserPhoto(userId);
+
+      if (mounted) {
+        context.showSnackBar('Profile photo updated');
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showErrorSnackBar('Could not update photo. Please try again.');
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -113,17 +155,16 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                                 color: AppColors.primaryLight,
                                 border: Border.all(
                                     color: AppColors.neutral300, width: 2),
-                                image: profile?.profilePictureUrl != null &&
-                                        profile!.profilePictureUrl!.isNotEmpty
+                                image: profile?.hasProfilePhoto == true &&
+                                        profile!.profilePhotoBytes != null
                                     ? DecorationImage(
-                                        image: NetworkImage(
-                                            profile.profilePictureUrl!),
+                                        image: MemoryImage(
+                                            profile.profilePhotoBytes!),
                                         fit: BoxFit.cover,
                                       )
                                     : null,
                               ),
-                              child: profile?.profilePictureUrl == null ||
-                                      profile!.profilePictureUrl!.isEmpty
+                              child: profile?.hasProfilePhoto != true
                                   ? Center(
                                       child: Text(
                                         profile?.firstName.isNotEmpty == true
@@ -140,9 +181,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                             ),
                             const SizedBox(height: 10),
                             GestureDetector(
-                              onTap: () {
-                                // TODO: Implement photo change
-                              },
+                              onTap: _pickAndUploadPhoto,
                               child: Text(
                                 'Change Photo',
                                 style: AppTypography.bodyB3.copyWith(

@@ -83,130 +83,138 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
   Widget build(BuildContext context) {
     final currentQuestion = quizQuestions[_currentQuestionIndex];
     final questionText = currentQuestion['question'] as String;
-    
+    final isAnsweredCorrectly = _showFeedback && _isCorrect;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 40),
-                    // Progress text
-                    Text(
-                      'Question ${_currentQuestionIndex + 1} of ${quizQuestions.length}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF666666),
-                      ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 32),
+
+              // Question counter + timer icon row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Question ${_currentQuestionIndex + 1} of ${quizQuestions.length}',
+                    style: AppTypography.bodyB3.copyWith(
+                      color: const Color(0xFF666666),
                     ),
-                    const Spacer(flex: 2),
-                    // Question text
-                    Text(
-                      questionText,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0A2C6B),
-                        height: 1.3,
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  Image.asset(
+                    'assets/icons/CareKudos (16)/vuesax/twotone/timer.png',
+                    width: 28,
+                    height: 28,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.timer_outlined,
+                      size: 28,
+                      color: Color(0xFFE53935),
                     ),
-                    const Spacer(flex: 1),
-                    // Yes/No buttons - side by side
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildAnswerButton(
-                            label: 'Yes',
-                            value: true,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildAnswerButton(
-                            label: 'No',
-                            value: false,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // Feedback message
-                    if (_showFeedback) ...[
-                      Text(
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 40),
+
+              // Question text
+              Text(
+                questionText,
+                textAlign: TextAlign.center,
+                style: AppTypography.headingH2.copyWith(
+                  color: const Color(0xFF1A1A2E),
+                  height: 1.35,
+                ),
+              ),
+
+              const SizedBox(height: 48),
+
+              // Yes / No answer buttons – tall, equal width
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildAnswerButton(label: 'Yes', value: true),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildAnswerButton(label: 'No', value: false),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // Feedback message (or empty placeholder to keep layout stable)
+              SizedBox(
+                height: 40,
+                child: _showFeedback
+                    ? Text(
                         _isCorrect
                             ? (currentQuestion['correctMessage'] as String)
                             : (currentQuestion['incorrectMessage'] as String),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: _isCorrect ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
+                        style: AppTypography.bodyB4.copyWith(
+                          color: _isCorrect
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFFE53935),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                    ] else ...[
-                      const SizedBox(height: 56), // Spacer when no feedback
-                    ],
-                    // Continue button - always visible but disabled when not correct
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: (_showFeedback && _isCorrect) ? _nextQuestion : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: (_showFeedback && _isCorrect)
-                              ? const Color(0xFF0A2C6B)
-                              : const Color(0xFFE0E0E0),
-                          foregroundColor: (_showFeedback && _isCorrect)
+                      )
+                    : const SizedBox.shrink(),
+              ),
+
+              // Push continue button to the bottom
+              const Spacer(),
+
+              // Continue button – full width
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: isAnsweredCorrectly ? _nextQuestion : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isAnsweredCorrectly
+                        ? const Color(0xFF0A2C6B)
+                        : const Color(0xFFF2F2F7),
+                    foregroundColor: isAnsweredCorrectly
+                        ? Colors.white
+                        : const Color(0xFFBDBDBD),
+                    disabledBackgroundColor: const Color(0xFFF2F2F7),
+                    disabledForegroundColor: const Color(0xFFBDBDBD),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Continue',
+                        style: AppTypography.actionA1.copyWith(
+                          color: isAnsweredCorrectly
                               ? Colors.white
                               : const Color(0xFFBDBDBD),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                          disabledBackgroundColor: const Color(0xFFE0E0E0),
-                          disabledForegroundColor: const Color(0xFFBDBDBD),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Continue',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: (_showFeedback && _isCorrect)
-                                    ? Colors.white
-                                    : const Color(0xFFBDBDBD),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(
-                              Icons.arrow_forward,
-                              size: 20,
-                              color: (_showFeedback && _isCorrect)
-                                  ? Colors.white
-                                  : const Color(0xFFBDBDBD),
-                            ),
-                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Spacer(flex: 1),
-                  ],
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.arrow_forward,
+                        size: 18,
+                        color: isAnsweredCorrectly
+                            ? Colors.white
+                            : const Color(0xFFBDBDBD),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            // Bottom indicator bar
-            _buildBottomIndicator(),
-          ],
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
@@ -216,77 +224,47 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
     required String label,
     required bool value,
   }) {
-    bool isSelected = _showFeedback && _selectedAnswer == value;
-    
+    final bool isSelected = _showFeedback && _selectedAnswer == value;
+
     Color backgroundColor;
     Color borderColor;
     Color textColor;
-    
+
     if (isSelected) {
       if (_isCorrect) {
-        backgroundColor = const Color(0xFF4CAF50); // Green
+        // Correct – green
+        backgroundColor = const Color(0xFF4CAF50);
         borderColor = const Color(0xFF4CAF50);
         textColor = Colors.white;
       } else {
-        backgroundColor = const Color(0xFFE53935); // Red
+        // Incorrect – red
+        backgroundColor = const Color(0xFFE53935);
         borderColor = const Color(0xFFE53935);
         textColor = Colors.white;
       }
     } else {
+      // Default / unselected
       backgroundColor = Colors.white;
       borderColor = const Color(0xFFE0E0E0);
       textColor = const Color(0xFF212121);
     }
-    
-    return SizedBox(
-      height: 80,
-      child: ElevatedButton(
-        onPressed: _showFeedback ? null : () => _answerQuestion(value),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          foregroundColor: textColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: borderColor,
-              width: isSelected ? 2 : 1,
-            ),
+
+    return GestureDetector(
+      onTap: _showFeedback ? null : () => _answerQuestion(value),
+      child: Container(
+        height: 120,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: borderColor,
+            width: isSelected ? 2 : 1,
           ),
-          elevation: 0,
-          disabledBackgroundColor: backgroundColor,
-          disabledForegroundColor: textColor,
         ),
+        alignment: Alignment.center,
         child: Text(
           label,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomIndicator() {
-    return Container(
-      height: 8,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(
-          quizQuestions.length,
-          (index) => Container(
-            width: 8,
-            height: 8,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: index == _currentQuestionIndex
-                  ? const Color(0xFF0A2C6B)
-                  : const Color(0xFFE0E0E0),
-            ),
-          ),
+          style: AppTypography.headingH4.copyWith(color: textColor),
         ),
       ),
     );

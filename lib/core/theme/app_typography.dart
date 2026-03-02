@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// App typography from Figma design system
 abstract class AppTypography {
-  static const String fontFamily = 'Inter';
+  static String get fontFamily => GoogleFonts.inter().fontFamily!;
 
   // ============================================
   // DISPLAY STYLES
   // ============================================
   
   /// Display D1 - 36px SemiBold
-  static const TextStyle displayD1 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get displayD1 => GoogleFonts.inter(
     fontSize: 36,
     fontWeight: FontWeight.w600,
     height: 1.2,
@@ -19,8 +19,7 @@ abstract class AppTypography {
   );
 
   /// Display D2 - 28px SemiBold
-  static const TextStyle displayD2 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get displayD2 => GoogleFonts.inter(
     fontSize: 28,
     fontWeight: FontWeight.w600,
     height: 1.25,
@@ -28,8 +27,7 @@ abstract class AppTypography {
   );
 
   /// Display D3 - 24px SemiBold
-  static const TextStyle displayD3 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get displayD3 => GoogleFonts.inter(
     fontSize: 24,
     fontWeight: FontWeight.w600,
     height: 1.3,
@@ -41,8 +39,7 @@ abstract class AppTypography {
   // ============================================
 
   /// Heading H1 - 28px SemiBold
-  static const TextStyle headingH1 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get headingH1 => GoogleFonts.inter(
     fontSize: 28,
     fontWeight: FontWeight.w600,
     height: 1.25,
@@ -50,8 +47,7 @@ abstract class AppTypography {
   );
 
   /// Heading H2 - 24px SemiBold
-  static const TextStyle headingH2 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get headingH2 => GoogleFonts.inter(
     fontSize: 24,
     fontWeight: FontWeight.w600,
     height: 1.3,
@@ -59,8 +55,7 @@ abstract class AppTypography {
   );
 
   /// Heading H3 - 20px SemiBold
-  static const TextStyle headingH3 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get headingH3 => GoogleFonts.inter(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     height: 1.4,
@@ -68,8 +63,7 @@ abstract class AppTypography {
   );
 
   /// Heading H4 - 16px SemiBold
-  static const TextStyle headingH4 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get headingH4 => GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w600,
     height: 1.5,
@@ -77,8 +71,7 @@ abstract class AppTypography {
   );
 
   /// Heading H5 - 14px SemiBold
-  static const TextStyle headingH5 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get headingH5 => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w600,
     height: 1.5,
@@ -86,8 +79,7 @@ abstract class AppTypography {
   );
 
   /// Heading H6 - 12px SemiBold
-  static const TextStyle headingH6 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get headingH6 => GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w600,
     height: 1.5,
@@ -99,8 +91,7 @@ abstract class AppTypography {
   // ============================================
 
   /// Body B1 - 16px Medium
-  static const TextStyle bodyB1 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get bodyB1 => GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w500,
     height: 1.5,
@@ -108,8 +99,7 @@ abstract class AppTypography {
   );
 
   /// Body B2 - 16px Regular
-  static const TextStyle bodyB2 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get bodyB2 => GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w400,
     height: 1.5,
@@ -117,8 +107,7 @@ abstract class AppTypography {
   );
 
   /// Body B3 - 14px Medium
-  static const TextStyle bodyB3 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get bodyB3 => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.5,
@@ -126,8 +115,7 @@ abstract class AppTypography {
   );
 
   /// Body B4 - 14px Regular
-  static const TextStyle bodyB4 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get bodyB4 => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     height: 1.5,
@@ -135,8 +123,7 @@ abstract class AppTypography {
   );
 
   /// Body B5 - 12px Medium
-  static const TextStyle bodyB5 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get bodyB5 => GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w500,
     height: 1.5,
@@ -144,8 +131,7 @@ abstract class AppTypography {
   );
 
   /// Body B6 - 12px Regular
-  static const TextStyle bodyB6 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get bodyB6 => GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w400,
     height: 1.5,
@@ -157,8 +143,7 @@ abstract class AppTypography {
   // ============================================
 
   /// Action A1 - 16px Medium (buttons)
-  static const TextStyle actionA1 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get actionA1 => GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w500,
     height: 1.5,
@@ -166,8 +151,7 @@ abstract class AppTypography {
   );
 
   /// Action A2 - 14px Medium
-  static const TextStyle actionA2 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get actionA2 => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.5,
@@ -175,8 +159,7 @@ abstract class AppTypography {
   );
 
   /// Action A3 - 12px Medium
-  static const TextStyle actionA3 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get actionA3 => GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w500,
     height: 1.5,
@@ -188,8 +171,7 @@ abstract class AppTypography {
   // ============================================
 
   /// Caption C1 - 10px Medium
-  static const TextStyle captionC1 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get captionC1 => GoogleFonts.inter(
     fontSize: 10,
     fontWeight: FontWeight.w500,
     height: 1.4,
@@ -197,8 +179,7 @@ abstract class AppTypography {
   );
 
   /// Caption C2 - 10px Regular
-  static const TextStyle captionC2 = TextStyle(
-    fontFamily: fontFamily,
+  static TextStyle get captionC2 => GoogleFonts.inter(
     fontSize: 10,
     fontWeight: FontWeight.w400,
     height: 1.4,

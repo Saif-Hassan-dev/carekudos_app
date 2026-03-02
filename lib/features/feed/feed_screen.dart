@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/firebase_service.dart';
@@ -20,6 +21,7 @@ import '../../core/widgets/custom_text_field.dart';
 import '../../core/widgets/app_bottom_nav.dart';
 import '../../core/widgets/app_logo.dart';
 import '../../core/providers/notification_provider.dart';
+import '../../core/providers/user_photo_provider.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/push_notification_service.dart';
 import 'widgets/app_hero_section.dart';
@@ -101,11 +103,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                           color: const Color(0xFF0A2C6B),
                           image: userProfile.when(
                             data: (profile) =>
-                                profile?.profilePictureUrl != null &&
-                                        profile!.profilePictureUrl!.isNotEmpty
+                                profile?.hasProfilePhoto == true &&
+                                        profile!.profilePhotoBytes != null
                                     ? DecorationImage(
-                                        image: NetworkImage(
-                                            profile.profilePictureUrl!),
+                                        image: MemoryImage(
+                                            profile.profilePhotoBytes!),
                                         fit: BoxFit.cover,
                                       )
                                     : null,
@@ -115,8 +117,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                         ),
                         child: userProfile.when(
                           data: (profile) =>
-                              profile?.profilePictureUrl == null ||
-                                      profile!.profilePictureUrl!.isEmpty
+                              profile?.hasProfilePhoto != true
                                   ? Center(
                                       child: Text(
                                         Formatters.getInitials(
@@ -479,24 +480,40 @@ class _PostCardState extends ConsumerState<_PostCard>
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Avatar
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF0A2C6B),
-                  ),
-                  child: Center(
-                    child: Text(
-                      Formatters.getInitials(widget.authorName),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                // Avatar – show profile photo if available
+                Consumer(
+                  builder: (context, ref, _) {
+                    final photoAsync =
+                        ref.watch(userPhotoProvider(widget.authorId));
+                    final Uint8List? photoBytes = photoAsync.valueOrNull;
+
+                    return Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF0A2C6B),
+                        image: photoBytes != null
+                            ? DecorationImage(
+                                image: MemoryImage(photoBytes),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
-                    ),
-                  ),
+                      child: photoBytes == null
+                          ? Center(
+                              child: Text(
+                                Formatters.getInitials(widget.authorName),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )
+                          : null,
+                    );
+                  },
                 ),
                 const SizedBox(width: 12),
                 Expanded(

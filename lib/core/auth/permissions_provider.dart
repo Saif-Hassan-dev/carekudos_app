@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/constants.dart';
@@ -13,7 +15,7 @@ class UserProfile {
   final String? jobTitle;
   final String? phone;
   final String? postcode;
-  final String? profilePictureUrl;
+  final String? profilePhotoBase64;
   final DateTime? createdAt;
   final int totalStars;
   final int starsThisMonth;
@@ -25,6 +27,16 @@ class UserProfile {
   final bool gdprConsentGiven;
   final DateTime? gdprConsentTimestamp;
 
+  // Notification preferences
+  final bool notifyStarsReceived;
+  final bool notifyMentions;
+  final bool notifySystemUpdates;
+  final bool emailNotifications;
+  final bool pushNotifications;
+
+  // Marketing preferences
+  final bool agreeToUpdates;
+
   UserProfile({
     required this.uid,
     required this.email,
@@ -34,7 +46,7 @@ class UserProfile {
     this.jobTitle,
     this.phone,
     this.postcode,
-    this.profilePictureUrl,
+    this.profilePhotoBase64,
     this.createdAt,
     this.totalStars = 0,
     this.starsThisMonth = 0,
@@ -45,6 +57,12 @@ class UserProfile {
     this.managerIds = const [],
     this.gdprConsentGiven = false,
     this.gdprConsentTimestamp,
+    this.notifyStarsReceived = true,
+    this.notifyMentions = true,
+    this.notifySystemUpdates = true,
+    this.emailNotifications = true,
+    this.pushNotifications = true,
+    this.agreeToUpdates = false,
   });
 
   factory UserProfile.fromFirestore(DocumentSnapshot doc) {
@@ -58,7 +76,7 @@ class UserProfile {
       jobTitle: data['jobTitle'],
       phone: data['phone'],
       postcode: data['postcode'],
-      profilePictureUrl: data['profilePictureUrl'],
+      profilePhotoBase64: data['profilePhotoBase64'] ?? data['profilePictureUrl'],
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : null,
@@ -78,10 +96,30 @@ class UserProfile {
       gdprConsentTimestamp: data['gdprConsentTimestamp'] != null
           ? (data['gdprConsentTimestamp'] as Timestamp).toDate()
           : null,
+      notifyStarsReceived: data['notifyStarsReceived'] ?? true,
+      notifyMentions: data['notifyMentions'] ?? true,
+      notifySystemUpdates: data['notifySystemUpdates'] ?? true,
+      emailNotifications: data['emailNotifications'] ?? true,
+      pushNotifications: data['pushNotifications'] ?? true,
+      agreeToUpdates: data['agreeToUpdates'] ?? false,
     );
   }
 
   String get fullName => '$firstName $lastName';
+
+  /// Whether a profile photo is available
+  bool get hasProfilePhoto =>
+      profilePhotoBase64 != null && profilePhotoBase64!.isNotEmpty;
+
+  /// Decoded profile photo bytes (or null)
+  Uint8List? get profilePhotoBytes {
+    if (!hasProfilePhoto) return null;
+    try {
+      return base64Decode(profilePhotoBase64!);
+    } catch (_) {
+      return null;
+    }
+  }
 
   bool get isManager => role == 'manager';
   bool get isStaff =>

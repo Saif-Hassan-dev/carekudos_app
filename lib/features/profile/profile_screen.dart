@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:typed_data';
 import '../../core/auth/auth_provider.dart';
 import '../../core/auth/auth_notifier.dart';
 import '../../core/auth/permissions_provider.dart';
@@ -77,10 +78,10 @@ class ProfileScreen extends ConsumerWidget {
                       CircleAvatar(
                         radius: 40,
                         backgroundColor: const Color(0xFF0A2C6B),
-                        backgroundImage: profile.profilePictureUrl != null && profile.profilePictureUrl!.isNotEmpty
-                            ? NetworkImage(profile.profilePictureUrl!)
+                        backgroundImage: profile.hasProfilePhoto && profile.profilePhotoBytes != null
+                            ? MemoryImage(profile.profilePhotoBytes!)
                             : null,
-                        child: profile.profilePictureUrl == null || profile.profilePictureUrl!.isEmpty
+                        child: !profile.hasProfilePhoto
                             ? Text(
                                 Formatters.getInitials(profile.firstName),
                                 style: const TextStyle(
@@ -698,10 +699,10 @@ class ProfileScreen extends ConsumerWidget {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: const Color(0xFF0A2C6B),
-                backgroundImage: profile.profilePictureUrl != null && profile.profilePictureUrl!.isNotEmpty
-                    ? NetworkImage(profile.profilePictureUrl!)
+                backgroundImage: profile.hasProfilePhoto && profile.profilePhotoBytes != null
+                    ? MemoryImage(profile.profilePhotoBytes!)
                     : null,
-                child: profile.profilePictureUrl == null || profile.profilePictureUrl!.isEmpty
+                child: !profile.hasProfilePhoto
                     ? Text(
                         Formatters.getInitials(profile.firstName),
                         style: const TextStyle(

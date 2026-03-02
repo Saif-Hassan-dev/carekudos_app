@@ -4,7 +4,7 @@ import '../theme/theme.dart';
 enum AppButtonVariant { primary, secondary, text, ghost }
 enum AppButtonSize { small, medium, large }
 
-/// Primary button component matching Figma design
+
 class AppButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -195,7 +195,7 @@ class AppButton extends StatelessWidget {
       children.add(AppSpacing.horizontalGap8);
     }
     
-    children.add(Text(text, style: _getTextStyle()));
+    children.add(Text(text, style: _getTextStyle().copyWith(color: color)));
     
     if (trailingIcon != null) {
       children.add(AppSpacing.horizontalGap8);

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/auth/permissions_provider.dart';
+import '../../core/services/firebase_service.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/app_switch.dart';
 
@@ -13,71 +15,118 @@ class PrivacyGdprScreen extends ConsumerStatefulWidget {
 
 class _PrivacyGdprScreenState extends ConsumerState<PrivacyGdprScreen> {
   bool _marketingOptIn = false;
+  bool _loaded = false;
+
+  void _loadFromProfile(UserProfile profile) {
+    if (_loaded) return;
+    _loaded = true;
+    _marketingOptIn = profile.agreeToUpdates;
+  }
+
+  Future<void> _saveMarketingOptIn(String userId) async {
+    try {
+      await FirebaseService.updateMarketingOptIn(
+        userId: userId,
+        optIn: _marketingOptIn,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save preference')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.cardBackground,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Privacy & GDPR',
-          style: AppTypography.headingH5,
-        ),
+    final profileAsync = ref.watch(userProfileProvider);
+
+    return profileAsync.when(
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       ),
-      body: ListView(
-        children: [
-          // GDPR Consent Section
-          _SectionHeader(title: 'GDPR consent'),
-          _ConsentStatus(),
-          AppSpacing.verticalGap24,
-
-          // Marketing Preferences
-          _SectionHeader(title: 'Marketing preferences'),
-          _ToggleItem(
-            title: 'Product updates & announcements',
-            subtitle: 'Optional',
-            value: _marketingOptIn,
-            onChanged: (value) => setState(() => _marketingOptIn = value),
+      error: (_, __) => Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
           ),
-          AppSpacing.verticalGap24,
-
-          // Your Data Rights
-          _SectionHeader(title: 'Your data rights'),
-          _ActionItem(
-            title: 'Request a copy of my data',
-            subtitle: 'Contact support to proceed',
-            onTap: () => _contactSupport('data request'),
-          ),
-          _ActionItem(
-            title: 'Request account deletion',
-            subtitle: 'Contact support to proceed',
-            onTap: () => _contactSupport('account deletion'),
-          ),
-          AppSpacing.verticalGap24,
-
-          // Legal Documents
-          _SectionHeader(title: 'Legal documents'),
-          _NavigationItem(
-            title: 'Privacy Policy',
-            onTap: () {
-              // TODO: Open privacy policy
-            },
-          ),
-          _NavigationItem(
-            title: 'Terms & Conditions',
-            onTap: () {
-              // TODO: Open terms & conditions
-            },
-          ),
-          AppSpacing.verticalGap32,
-        ],
+          title: const Text('Privacy & GDPR'),
+        ),
+        body: const Center(child: Text('Failed to load preferences')),
       ),
+      data: (profile) {
+        if (profile != null) _loadFromProfile(profile);
+        final userId = profile?.uid;
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.cardBackground,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.pop(),
+            ),
+            title: Text(
+              'Privacy & GDPR',
+              style: AppTypography.headingH5,
+            ),
+          ),
+          body: ListView(
+            children: [
+              // GDPR Consent Section
+              _SectionHeader(title: 'GDPR consent'),
+              _ConsentStatus(),
+              AppSpacing.verticalGap24,
+
+              // Marketing Preferences
+              _SectionHeader(title: 'Marketing preferences'),
+              _ToggleItem(
+                title: 'Product updates & announcements',
+                subtitle: 'Optional',
+                value: _marketingOptIn,
+                onChanged: (value) {
+                  setState(() => _marketingOptIn = value);
+                  if (userId != null) _saveMarketingOptIn(userId);
+                },
+              ),
+              AppSpacing.verticalGap24,
+
+              // Your Data Rights
+              _SectionHeader(title: 'Your data rights'),
+              _ActionItem(
+                title: 'Request a copy of my data',
+                subtitle: 'Contact support to proceed',
+                onTap: () => _contactSupport('data request'),
+              ),
+              _ActionItem(
+                title: 'Request account deletion',
+                subtitle: 'Contact support to proceed',
+                onTap: () => _contactSupport('account deletion'),
+              ),
+              AppSpacing.verticalGap24,
+
+              // Legal Documents
+              _SectionHeader(title: 'Legal documents'),
+              _NavigationItem(
+                title: 'Privacy Policy',
+                onTap: () {
+                  // TODO: Open privacy policy
+                },
+              ),
+              _NavigationItem(
+                title: 'Terms & Conditions',
+                onTap: () {
+                  // TODO: Open terms & conditions
+                },
+              ),
+              AppSpacing.verticalGap32,
+            ],
+          ),
+        );
+      },
     );
   }
 

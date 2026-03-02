@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/onboarding_provider.dart';
 import '../../../core/constants/app_icons.dart';
+import '../../../core/theme/theme.dart';
 
 class RoleSelectionScreen extends ConsumerStatefulWidget {
   final VoidCallback onNext;
@@ -46,6 +47,8 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasSelection = _selectedRole != null;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -57,89 +60,79 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
               const SizedBox(height: 48),
 
               // Title
-              const Text(
+              Text(
                 'Select your role',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0A2C6B),
+                style: AppTypography.headingH1.copyWith(
+                  color: const Color(0xFF1A1A2E),
                 ),
               ),
               const SizedBox(height: 8),
 
               // Subtitle
-              const Text(
+              Text(
                 'This helps us set up the right experience for you.',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF757575),
-                  height: 1.5,
+                style: AppTypography.bodyB4.copyWith(
+                  color: const Color(0xFF757575),
                 ),
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 32),
 
-              // Role cards
-              Expanded(
-                child: ListView.separated(
-                  itemCount: _roles.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final role = _roles[index];
-                    final roleId = role['id'] as String;
-                    final isSelected = _selectedRole == roleId;
+              // Role cards — no scroll, just a column
+              ...List.generate(_roles.length, (index) {
+                final role = _roles[index];
+                final roleId = role['id'] as String;
+                final isSelected = _selectedRole == roleId;
 
-                    return _RoleCard(
-                      label: role['label'] as String,
-                      description: role['description'] as String,
-                      iconPath: role['icon'] as String,
-                      isSelected: isSelected,
-                      onTap: () => setState(() => _selectedRole = roleId),
-                    );
-                  },
-                ),
-              ),
+                return Padding(
+                  padding: EdgeInsets.only(bottom: index < _roles.length - 1 ? 12 : 0),
+                  child: _RoleCard(
+                    label: role['label'] as String,
+                    description: role['description'] as String,
+                    iconPath: role['icon'] as String,
+                    isSelected: isSelected,
+                    onTap: () => setState(() => _selectedRole = roleId),
+                  ),
+                );
+              }),
 
-              const SizedBox(height: 24),
+              const Spacer(),
 
               // Continue button
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: 52,
                 child: ElevatedButton(
-                  onPressed: _selectedRole != null ? _continueWithRole : null,
+                  onPressed: hasSelection ? _continueWithRole : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _selectedRole != null
+                    backgroundColor: hasSelection
                         ? const Color(0xFF0A2C6B)
-                        : const Color(0xFFE0E0E0),
-                    foregroundColor: _selectedRole != null
+                        : const Color(0xFFF2F2F7),
+                    foregroundColor: hasSelection
                         ? Colors.white
                         : const Color(0xFFBDBDBD),
+                    disabledBackgroundColor: const Color(0xFFF2F2F7),
+                    disabledForegroundColor: const Color(0xFFBDBDBD),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     elevation: 0,
-                    disabledBackgroundColor: const Color(0xFFE0E0E0),
-                    disabledForegroundColor: const Color(0xFFBDBDBD),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         'Continue',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: _selectedRole != null
+                        style: AppTypography.actionA1.copyWith(
+                          color: hasSelection
                               ? Colors.white
                               : const Color(0xFFBDBDBD),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Icon(
                         Icons.arrow_forward,
-                        size: 20,
-                        color: _selectedRole != null
+                        size: 18,
+                        color: hasSelection
                             ? Colors.white
                             : const Color(0xFFBDBDBD),
                       ),
@@ -180,12 +173,12 @@ class _RoleCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? const Color(0xFF0A2C6B) : const Color(0xFFE0E0E0),
+            color: isSelected ? const Color(0xFF0A2C6B) : const Color(0xFFE8E8E8),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -193,8 +186,8 @@ class _RoleCard extends StatelessWidget {
           children: [
             // Avatar
             Container(
-              width: 56,
-              height: 56,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFFF5F5F5),
@@ -208,18 +201,18 @@ class _RoleCard extends StatelessWidget {
               child: ClipOval(
                 child: Image.asset(
                   iconPath,
-                  width: 56,
-                  height: 56,
+                  width: 48,
+                  height: 48,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stack) => const Icon(
                     Icons.person,
-                    size: 28,
+                    size: 24,
                     color: Color(0xFF757575),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
 
             // Text
             Expanded(
@@ -228,30 +221,26 @@ class _RoleCard extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF212121),
+                    style: AppTypography.headingH4.copyWith(
+                      color: const Color(0xFF212121),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     description,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFF757575),
+                    style: AppTypography.bodyB6.copyWith(
+                      color: const Color(0xFF757575),
                     ),
                   ),
                 ],
               ),
             ),
 
-            // Checkmark
+            // Checkmark — only visible when selected
             if (isSelected)
               Container(
-                width: 28,
-                height: 28,
+                width: 24,
+                height: 24,
                 decoration: const BoxDecoration(
                   color: Color(0xFF0A2C6B),
                   shape: BoxShape.circle,
@@ -259,19 +248,7 @@ class _RoleCard extends StatelessWidget {
                 child: const Icon(
                   Icons.check,
                   color: Colors.white,
-                  size: 16,
-                ),
-              )
-            else
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: const Color(0xFFE0E0E0),
-                    width: 1.5,
-                  ),
+                  size: 14,
                 ),
               ),
           ],
