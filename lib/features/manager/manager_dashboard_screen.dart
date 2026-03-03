@@ -12,6 +12,7 @@ import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/providers/notification_provider.dart';
 import '../../../core/utils/constants.dart';
 import 'providers/manager_dashboard_provider.dart';
+import 'widgets/quick_recognition_sheet.dart';
 
 class ManagerDashboardScreen extends ConsumerStatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -57,97 +58,96 @@ class _ManagerDashboardScreenState
     final profile = ref.read(userProfileProvider).value;
     if (currentUser == null) return;
 
-    // Confirm dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.allXl),
-        title: Text('Give Manager Star', style: AppTypography.headingH5),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Give a 3× Manager Star to $staffName?',
-              style: AppTypography.bodyB4,
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.gold50,
-                borderRadius: AppRadius.allLg,
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.star, size: 18, color: AppColors.gold400),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Worth ${AppConstants.managerStarMultiplier} points (Manager multiplier)',
-                    style: AppTypography.captionC1
-                        .copyWith(color: AppColors.gold600),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
-                style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(ctx, true),
-            icon: Icon(Icons.star, size: 16),
-            label: const Text('Give Star'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.gold400,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.allLg),
-            ),
-          ),
-        ],
-      ),
+    QuickRecognitionSheet.show(
+      context,
+      preselectedUid: staffUid,
+      preselectedName: staffName,
+      onSend: (uid, name, starPoints, comment) async {
+        try {
+          final postId = await giveManagerStarToUser(
+            staffUid: uid,
+            managerId: currentUser.uid,
+            managerName: profile?.fullName ?? 'Manager',
+            note: comment,
+            starPoints: starPoints,
+          );
+          if (postId != null) {
+            ref.invalidate(teamRecognitionProvider);
+            ref.invalidate(recognitionGapsProvider);
+            ref.invalidate(risingStarsProvider);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Gave $starPoints star${starPoints > 1 ? 's' : ''} to $name!'),
+                ),
+              );
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$name has no posts to star yet'),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to give star: $e')),
+            );
+          }
+        }
+      },
     );
+  }
 
-    if (confirmed != true) return;
+  /// Open Quick Recognition sheet without a pre-selected staff member.
+  void _openQuickRecognition() {
+    final currentUser = ref.read(currentUserProvider);
+    final profile = ref.read(userProfileProvider).value;
+    if (currentUser == null) return;
 
-    try {
-      final postId = await giveManagerStarToUser(
-        staffUid: staffUid,
-        managerId: currentUser.uid,
-        managerName: profile?.fullName ?? 'Manager',
-      );
-      if (postId != null) {
-        ref.invalidate(teamRecognitionProvider);
-        ref.invalidate(recognitionGapsProvider);
-        ref.invalidate(risingStarsProvider);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content:
-                  Text('⭐ Gave ${AppConstants.managerStarMultiplier}× star to $staffName!'),
-            ),
+    QuickRecognitionSheet.show(
+      context,
+      onSend: (uid, name, starPoints, comment) async {
+        try {
+          final postId = await giveManagerStarToUser(
+            staffUid: uid,
+            managerId: currentUser.uid,
+            managerName: profile?.fullName ?? 'Manager',
+            note: comment,
+            starPoints: starPoints,
           );
+          if (postId != null) {
+            ref.invalidate(teamRecognitionProvider);
+            ref.invalidate(recognitionGapsProvider);
+            ref.invalidate(risingStarsProvider);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Gave $starPoints star${starPoints > 1 ? 's' : ''} to $name!'),
+                ),
+              );
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$name has no posts to star yet'),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to give star: $e')),
+            );
+          }
         }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$staffName has no posts to star yet'),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to give star: $e')),
-        );
-      }
-    }
+      },
+    );
   }
 
   @override
@@ -213,7 +213,7 @@ class _ManagerDashboardScreenState
         width: 56,
         height: 56,
         child: FloatingActionButton(
-          onPressed: () => context.push('/create-post'),
+          onPressed: _openQuickRecognition,
           backgroundColor: AppColors.secondary,
           elevation: 6,
           shape: const CircleBorder(),

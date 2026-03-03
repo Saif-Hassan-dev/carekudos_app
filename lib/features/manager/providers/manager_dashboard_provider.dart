@@ -780,7 +780,9 @@ Future<String?> giveManagerStarToUser({
   required String managerId,
   required String managerName,
   String? note,
+  int? starPoints,
 }) async {
+  final points = starPoints ?? AppConstants.managerStarMultiplier;
   // Find user's latest approved post
   final snap = await _firestore
       .collection(AppConstants.postsCollection)
@@ -804,7 +806,6 @@ Future<String?> giveManagerStarToUser({
   final postData = postDoc.data();
   final postId = postDoc.id;
   final category = postData['category'] as String? ?? 'General';
-  final multiplier = AppConstants.managerStarMultiplier;
 
   final batch = _firestore.batch();
 
@@ -812,7 +813,7 @@ Future<String?> giveManagerStarToUser({
   batch.update(
     _firestore.collection(AppConstants.postsCollection).doc(postId),
     {
-      'stars': FieldValue.increment(multiplier),
+      'stars': FieldValue.increment(points),
       'starredBy': FieldValue.arrayUnion([managerId]),
     },
   );
@@ -821,8 +822,8 @@ Future<String?> giveManagerStarToUser({
   batch.update(
     _firestore.collection(AppConstants.usersCollection).doc(staffUid),
     {
-      'totalStars': FieldValue.increment(multiplier),
-      'starsThisMonth': FieldValue.increment(multiplier),
+      'totalStars': FieldValue.increment(points),
+      'starsThisMonth': FieldValue.increment(points),
     },
   );
 
@@ -833,7 +834,7 @@ Future<String?> giveManagerStarToUser({
     'receiverId': staffUid,
     'postId': postId,
     'starType': 'Manager',
-    'points': multiplier,
+    'points': points,
     'note': note,
     'category': category,
     'giverName': managerName,
