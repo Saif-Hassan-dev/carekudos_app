@@ -4,7 +4,6 @@ import '../utils/constants.dart';
 
 enum NotificationType {
   star,           // User received a star
-  comment,        // Comment on user's post
   achievement,    // Achievement unlocked
   reminder,       // System reminder
   postApproved,   // Post approved by admin
@@ -29,8 +28,6 @@ class NotificationService {
       switch (type) {
         case NotificationType.star:
           return data['notifyStarsReceived'] ?? true;
-        case NotificationType.comment:
-          return data['notifyMentions'] ?? true;
         case NotificationType.system:
         case NotificationType.reminder:
         case NotificationType.postApproved:
@@ -52,7 +49,6 @@ class NotificationService {
     required String message,
     String? relatedUserId,
     String? relatedPostId,
-    String? relatedCommentId,
     Map<String, dynamic>? metadata,
   }) async {
     try {
@@ -72,7 +68,6 @@ class NotificationService {
         'message': message,
         'relatedUserId': relatedUserId,
         'relatedPostId': relatedPostId,
-        'relatedCommentId': relatedCommentId,
         'metadata': metadata,
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
@@ -103,25 +98,6 @@ class NotificationService {
         'category': category,
         'multiplier': multiplier,
       },
-    );
-  }
-
-  /// Create notification when user's post is commented on
-  static Future<void> notifyNewComment({
-    required String postAuthorId,
-    required String commenterName,
-    required String commenterId,
-    required String postId,
-    required String commentId,
-  }) async {
-    await createNotification(
-      userId: postAuthorId,
-      type: NotificationType.comment,
-      title: 'New Comment',
-      message: '$commenterName commented on your post',
-      relatedUserId: commenterId,
-      relatedPostId: postId,
-      relatedCommentId: commentId,
     );
   }
 

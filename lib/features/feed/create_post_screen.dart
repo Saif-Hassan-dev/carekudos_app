@@ -141,6 +141,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
     try {
       final needsApproval = userProfile.postCount < 5;
+      final hasGdprWarning = _gdprStatus == GdprStatus.warning;
 
       await FirebaseFirestore.instance
           .collection(AppConstants.postsCollection)
@@ -162,6 +163,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         'approvedBy': null,
         'approvedAt': null,
         'needsApproval': needsApproval,
+        'gdprFlagged': hasGdprWarning,
       });
 
       await FirebaseFirestore.instance
@@ -176,6 +178,21 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
       if (mounted) {
         setState(() => _hasDraft = false);
+        if (needsApproval) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Post submitted! It will appear in the feed once a manager approves it.',
+              ),
+              backgroundColor: AppColors.primary,
+              duration: const Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
         context.pop(true);
       }
     } catch (e) {

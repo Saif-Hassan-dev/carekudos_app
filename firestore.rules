@@ -11,6 +11,11 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+
+    // Helper function: Check if user is a manager
+    function isManager() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager';
+    }
     
     // Users collection
     match /users/{userId} {
@@ -40,11 +45,17 @@ service cloud.firestore {
       allow create: if isSignedIn() 
                     && request.resource.data.authorId == request.auth.uid;
       
-      // Author can update anything; others can only update stars/starredBy
+      // Author can update anything; others can update stars/starredBy;
+      // Managers can update approval fields
       allow update: if isSignedIn() 
                     && (resource.data.authorId == request.auth.uid
                         || request.resource.data.diff(resource.data).affectedKeys()
-                           .hasOnly(['stars', 'starredBy']));
+                           .hasOnly(['stars', 'starredBy'])
+                        || (isManager() 
+                            && request.resource.data.diff(resource.data).affectedKeys()
+                               .hasOnly(['approvalStatus', 'approvedBy', 'approvedAt',
+                                         'rejectedBy', 'rejectedAt', 'rejectionReason',
+                                         'editRequestedBy', 'editRequestedAt', 'editRequestReason'])));
       
       // Only post author can delete their posts
       allow delete: if isSignedIn() 
@@ -81,14 +92,10 @@ service cloud.firestore {
                     && resource.data.userId == request.auth.uid;
     }
     
-    // Comments collection (future use)
+    // Comments collection (reserved for future use)
     match /comments/{commentId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() 
-                    && resource.data.authorId == request.auth.uid;
-      allow delete: if isSignedIn() 
-                    && resource.data.authorId == request.auth.uid;
+      allow write: if false;
     }
     
     // Achievements collection (future use)
@@ -130,6 +137,27 @@ service cloud.firestore {
     match /organizations/{orgId} {
       allow read: if isSignedIn();
       allow write: if false; // Only admins via backend
+    }
+
+    // Invite codes collection
+    match /invite_codes/{codeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isManager();
+      allow update: if isSignedIn();
+      allow delete: if false;
+    }
+
+    // Moderation logs collection – tracks every moderation action
+    match /moderation_logs/{logId} {
+      // Managers can read moderation logs
+      allow read: if isSignedIn() && isManager();
+
+      // Only managers can create log entries
+      allow create: if isSignedIn() && isManager()
+                    && request.resource.data.managerId == request.auth.uid;
+
+      // Logs are immutable – no edits or deletes
+      allow update, delete: if false;
     }
   }
 }

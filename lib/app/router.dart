@@ -10,6 +10,7 @@ import '../features/onboarding/gdpr_training_flow.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/feed/feed_screen.dart';
 import '../features/feed/create_post_screen.dart';
+import '../features/manager/manager_dashboard_screen.dart';
 import '../features/post/post_detail_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -58,7 +59,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 state.matchedLocation == '/login' ||
                 state.matchedLocation == '/onboarding' ||
                 state.matchedLocation == '/gdpr-training')) {
-          return '/feed';
+          return profile.isManager ? '/manager-dashboard' : '/feed';
         }
       } else {
         // User is NOT logged in
@@ -79,7 +80,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             state.matchedLocation != '/welcome' &&
             state.matchedLocation != '/onboarding' &&
             state.matchedLocation != '/forgot-password' &&
-            (state.matchedLocation == '/feed' || 
+            (state.matchedLocation == '/feed' ||
+            state.matchedLocation == '/manager-dashboard' ||
             state.matchedLocation == '/profile' ||
             state.matchedLocation == '/create-post' ||
             state.matchedLocation == '/notifications' ||
@@ -125,7 +127,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/gdpr-training',
         builder: (context, state) => const GdprTrainingFlow(),
       ),
-      GoRoute(path: '/feed', builder: (context, state) => const FeedScreen()),
+      GoRoute(
+        path: '/feed',
+        redirect: (context, state) async {
+          // If the user is a manager, redirect to manager dashboard
+          try {
+            final profile = await ref.read(userProfileProvider.future);
+            if (profile != null && profile.isManager) {
+              return '/manager-dashboard';
+            }
+          } catch (_) {}
+          return null;
+        },
+        builder: (context, state) => const FeedScreen(),
+      ),
+      GoRoute(
+        path: '/manager-dashboard',
+        builder: (context, state) => const ManagerDashboardScreen(),
+      ),
       GoRoute(
         path: '/create-post',
         builder: (context, state) => const CreatePostScreen(),

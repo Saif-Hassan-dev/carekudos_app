@@ -17,10 +17,14 @@ class ValuePropositionScreen extends StatelessWidget {
           padding: AppSpacing.all24,
           child: Column(
             children: [
-              AppSpacing.verticalGap16,
-              // App Logo
-              const AppLogo(size: LogoSize.lg, showText: true),
-              const Spacer(flex: 1),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      AppSpacing.verticalGap16,
+                      // App Logo
+                      const AppLogo(size: LogoSize.lg, showText: true),
+                      const SizedBox(height: 24),
               // Hero Image
               Container(
                 height: 220,
@@ -76,7 +80,11 @@ class ValuePropositionScreen extends StatelessWidget {
                   _FeatureChip(label: 'CQC Evidence'),
                 ],
               ),
-              const Spacer(flex: 2),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
               // Get Started Button
               AppButton.primary(
                 text: 'Get Started',

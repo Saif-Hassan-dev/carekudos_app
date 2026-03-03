@@ -205,34 +205,6 @@ class PostDetailScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                AppSpacing.verticalGap24,
-
-                // Placeholder for future features
-                Container(
-                  width: double.infinity,
-                  padding: AppSpacing.all16,
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBackground,
-                    borderRadius: AppRadius.allLg,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.comment_outlined,
-                        size: 48,
-                        color: AppColors.textTertiary.withOpacity(0.5),
-                      ),
-                      AppSpacing.verticalGap8,
-                      Text(
-                        'Comments coming soon',
-                        style: AppTypography.bodyB3.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           );
@@ -242,7 +214,8 @@ class PostDetailScreen extends ConsumerWidget {
   }
 
   String _formatRole(String role) {
-    return role.split('_').map((word) {
+    if (role.isEmpty) return 'Care Worker';
+    return role.split('_').where((w) => w.isNotEmpty).map((word) {
       return word[0].toUpperCase() + word.substring(1);
     }).join(' ');
   }

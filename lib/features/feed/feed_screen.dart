@@ -244,6 +244,18 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                       return _buildEmptyState(context);
                     }
 
+                    // Filter to only approved posts (avoids composite index)
+                    final approvedDocs = snapshot.data!.docs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final status = data['approvalStatus'] as String?;
+                      // Show approved posts, plus legacy posts without status
+                      return status == 'approved' || status == null;
+                    }).toList();
+
+                    if (approvedDocs.isEmpty) {
+                      return _buildEmptyState(context);
+                    }
+
                     return RefreshIndicator(
                       color: AppColors.primary,
                       onRefresh: () async {
@@ -254,10 +266,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
-                        itemCount: snapshot.data!.docs.length,
+                        itemCount: approvedDocs.length,
                         addAutomaticKeepAlives: true,
                         itemBuilder: (context, index) {
-                          final doc = snapshot.data!.docs[index];
+                          final doc = approvedDocs[index];
                           final data = doc.data() as Map<String, dynamic>;
 
                           final currentUser = ref.read(currentUserProvider);
@@ -335,11 +347,25 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       title: 'No posts yet',
       subtitle:
           'Be the first to share an achievement!\nBe specific and GDPR-safe.',
-      action: FloatingActionButton.extended(
-        onPressed: () => context.push('/create-post'),
-        icon: const Icon(Icons.add),
-        label: const Text('Create Post'),
-        backgroundColor: AppColors.primary,
+      action: SizedBox(
+        height: 48,
+        child: ElevatedButton.icon(
+          onPressed: () => context.push('/create-post'),
+          icon: const Icon(Icons.add, size: 20),
+          label: const Text('Create Post'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -458,7 +484,9 @@ class _PostCardState extends ConsumerState<_PostCard>
     final canGiveStars = ref.watch(canGiveStarsProvider) && !_isOwnPost;
     final multiplier = ref.watch(starMultiplierProvider);
 
-    return Container(
+    return GestureDetector(
+      onTap: () => context.push('/post/${widget.postId}'),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -697,10 +725,9 @@ class _PostCardState extends ConsumerState<_PostCard>
           ],
         ),
       ),
+    ),
     );
-  }
-
-  Future<void> _openGiveStarSheet() async {
+  }  Future<void> _openGiveStarSheet() async {
     // Prevent self-starring
     final currentUser = ref.read(currentUserProvider);
     if (currentUser != null && currentUser.uid == widget.authorId) {

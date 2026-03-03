@@ -181,27 +181,10 @@ class PushNotificationService {
     final starText = points > 1 ? '$points stars' : 'a star';
     await sendPushNotification(
       recipientId: recipientId,
-      title: 'New Star Received! ⭐',
+      title: 'New Star Received!',
       body: '$giverName gave you $starText',
       data: {
         'type': 'star',
-        'postId': postId,
-      },
-    );
-  }
-
-  /// Send push notification when a comment is received
-  static Future<void> pushCommentReceived({
-    required String recipientId,
-    required String commenterName,
-    required String postId,
-  }) async {
-    await sendPushNotification(
-      recipientId: recipientId,
-      title: 'New Comment 💬',
-      body: '$commenterName commented on your post',
-      data: {
-        'type': 'comment',
         'postId': postId,
       },
     );

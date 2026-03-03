@@ -47,11 +47,15 @@ class _GdprExplanationScreenState extends State<GdprExplanationScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Spacer(flex: 2),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 40),
               
-              // Q&A Icon
+                      // Q&A Icon
               SizedBox(
                 width: 200,
                 height: 200,
@@ -106,7 +110,11 @@ class _GdprExplanationScreenState extends State<GdprExplanationScreen> {
                 ),
               ),
               
-              const Spacer(flex: 3),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
               
               // Take The Quiz Button
               SizedBox(

@@ -12,13 +12,17 @@ class WelcomeScreen extends StatelessWidget {
       backgroundColor: AppColors.neutral0,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Spacer(flex: 1),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 20),
               
-              // Hero Image
+                      // Hero Image
               Container(
                 width: double.infinity,
                 height: 380,
@@ -83,7 +87,11 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
               
-              const Spacer(flex: 2),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
               
               // Get Started Button
               SizedBox(

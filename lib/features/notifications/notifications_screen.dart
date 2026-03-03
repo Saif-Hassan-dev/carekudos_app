@@ -28,14 +28,20 @@ class NotificationsScreen extends ConsumerWidget {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+              padding: const EdgeInsets.fromLTRB(8, 12, 24, 16),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Notifications',
-                    style: AppTypography.headingH2.copyWith(
-                      color: AppColors.textPrimary,
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    color: AppColors.textPrimary,
+                    onPressed: () => context.pop(),
+                  ),
+                  Expanded(
+                    child: Text(
+                      'Notifications',
+                      style: AppTypography.headingH2.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                   GestureDetector(
@@ -231,8 +237,6 @@ class _NotificationTile extends StatelessWidget {
     switch (typeStr) {
       case 'star':
         return NotificationType.star;
-      case 'comment':
-        return NotificationType.comment;
       case 'achievement':
         return NotificationType.achievement;
       case 'reminder':
@@ -252,9 +256,6 @@ class _NotificationTile extends StatelessWidget {
     switch (type) {
       case NotificationType.star:
         iconPath = 'assets/icons/CareKudos (15)/vuesax/twotone/star.png';
-      case NotificationType.comment:
-        iconPath =
-            'assets/icons/CareKudos (13)/vuesax/twotone/message.png';
       case NotificationType.achievement:
         iconPath =
             'assets/icons/CareKudos (15)/vuesax/twotone/medal-star.png';
@@ -293,7 +294,6 @@ class _NotificationTile extends StatelessWidget {
 
 enum NotificationType {
   star,
-  comment,
   achievement,
   reminder,
   postApproved,

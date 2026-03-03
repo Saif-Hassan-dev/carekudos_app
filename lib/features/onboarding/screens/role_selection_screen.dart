@@ -57,7 +57,12 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 48),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 48),
 
               // Title
               Text(
@@ -95,7 +100,11 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                 );
               }),
 
-              const Spacer(),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
 
               // Continue button
               SizedBox(
