@@ -190,7 +190,7 @@ class _AppHeroSectionState extends State<AppHeroSection> {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: SizedBox(
               width: double.infinity,
-              height: 40,
+              height: 56,
               child: ElevatedButton(
                 onPressed: widget.onCreatePost,
                 style: ElevatedButton.styleFrom(

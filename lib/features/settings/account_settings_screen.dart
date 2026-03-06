@@ -256,7 +256,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                       // Save Button
                       SizedBox(
                         width: double.infinity,
-                        height: 52,
+                        height: 56,
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _saveChanges,
                           style: ElevatedButton.styleFrom(

@@ -40,11 +40,6 @@ typedef QuickRecognitionCallback = void Function(
   String? comment,
 );
 
-/// A bottom sheet that matches the "Quick Recognition" design:
-/// - Staff member search
-/// - Star tier selection (1/3/5)
-/// - Optional comment (250 chars)
-/// - Send Recognition button + Cancel
 class QuickRecognitionSheet extends StatefulWidget {
   final QuickRecognitionCallback onSend;
 
@@ -561,7 +556,7 @@ class _QuickRecognitionSheetState extends State<QuickRecognitionSheet> {
               // ── Send Recognition button ──
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: _canSend ? _submit : null,
                   style: ElevatedButton.styleFrom(

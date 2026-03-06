@@ -34,6 +34,17 @@ class AppConstants {
     'Excellence',
   ];
 
+  /// Predefined core values a manager can choose from during setup
+  static const List<String> predefinedCoreValues = [
+    'Compassion',
+    'Teamwork',
+    'Respect',
+    'Kindness',
+    'Integrity',
+    'Empowerment',
+    'Excellence',
+  ];
+
   // Notification Times
   static const Duration morningReminderTime = Duration(hours: 7, minutes: 30);
   static const Duration afternoonReminderTime = Duration(hours: 16, minutes: 0);

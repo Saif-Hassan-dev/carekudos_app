@@ -13,12 +13,14 @@ import '../features/feed/create_post_screen.dart';
 import '../features/manager/manager_dashboard_screen.dart';
 import '../features/post/post_detail_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/profile/user_public_profile_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/account_settings_screen.dart';
 import '../features/settings/privacy_gdpr_screen.dart';
 import '../features/settings/settings_notifications_screen.dart';
 import '../features/settings/help_support_screen.dart';
 import '../features/notifications/notifications_screen.dart';
+import '../features/manager/select_core_values_screen.dart';
 import '../core/auth/auth_provider.dart';
 import '../core/auth/permissions_provider.dart';
 import '../core/services/storage_service.dart';
@@ -53,12 +55,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/gdpr-training';
         }
 
+        // Manager with GDPR done but core values not set up — force values setup
+        if (hasProfile && profile!.gdprTrainingCompleted &&
+            profile.isManager && !profile.coreValuesSetupComplete &&
+            state.matchedLocation != '/select-core-values') {
+          return '/select-core-values';
+        }
+
         // Fully onboarded — redirect away from auth/onboarding screens
-        if (hasProfile && profile.gdprTrainingCompleted &&
+        if (hasProfile && profile!.gdprTrainingCompleted &&
+            (!profile.isManager || profile.coreValuesSetupComplete) &&
             (state.matchedLocation == '/welcome' ||
                 state.matchedLocation == '/login' ||
                 state.matchedLocation == '/onboarding' ||
-                state.matchedLocation == '/gdpr-training')) {
+                state.matchedLocation == '/gdpr-training' ||
+                state.matchedLocation == '/select-core-values')) {
           return profile.isManager ? '/manager-dashboard' : '/feed';
         }
       } else {
@@ -86,8 +97,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             state.matchedLocation == '/create-post' ||
             state.matchedLocation == '/notifications' ||
             state.matchedLocation.startsWith('/post/') ||
+            state.matchedLocation.startsWith('/user-profile/') ||
             state.matchedLocation.startsWith('/settings') ||
-            state.matchedLocation == '/gdpr-training')) {
+            state.matchedLocation == '/gdpr-training' ||
+            state.matchedLocation == '/select-core-values')) {
           return hasSeenOnboarding ? '/login' : '/welcome';
         }
       }
@@ -128,6 +141,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const GdprTrainingFlow(),
       ),
       GoRoute(
+        path: '/select-core-values',
+        builder: (context, state) => const SelectCoreValuesScreen(),
+      ),
+      GoRoute(
         path: '/feed',
         redirect: (context, state) async {
           // If the user is a manager, redirect to manager dashboard
@@ -159,6 +176,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/user-profile/:userId',
+        builder: (context, state) {
+          final userId = state.pathParameters['userId']!;
+          return UserPublicProfileScreen(userId: userId);
+        },
       ),
       GoRoute(
         path: '/settings',

@@ -13,6 +13,7 @@ import '../../../core/providers/notification_provider.dart';
 import '../../../core/utils/constants.dart';
 import 'providers/manager_dashboard_provider.dart';
 import 'widgets/quick_recognition_sheet.dart';
+import 'widgets/edit_company_values_dialog.dart';
 
 class ManagerDashboardScreen extends ConsumerStatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -186,14 +187,21 @@ class _ManagerDashboardScreenState
                       _buildTopValueChampionsSection(),
                       const SizedBox(height: 24),
                       _buildCqcEvidenceReport(),
+                      const SizedBox(height: 32),
+                      // ── Company Culture header ──
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text('Company Culture',
+                            style: AppTypography.headingH4
+                                .copyWith(fontWeight: FontWeight.w700)),
+                      ),
+                      _buildMoraleTrendSection(),
+                      const SizedBox(height: 24),
+                      _buildCultureHealthSection(),
                       const SizedBox(height: 24),
                       _buildRecognitionGapsSection(),
                       const SizedBox(height: 24),
                       _buildValuesDistributionSection(),
-                      const SizedBox(height: 24),
-                      _buildMoraleTrendSection(),
-                      const SizedBox(height: 24),
-                      _buildCultureHealthSection(),
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -209,26 +217,7 @@ class _ManagerDashboardScreenState
         notificationCount:
             ref.watch(unreadNotificationCountProvider).value ?? 0,
       ),
-      floatingActionButton: SizedBox(
-        width: 56,
-        height: 56,
-        child: FloatingActionButton(
-          onPressed: _openQuickRecognition,
-          backgroundColor: AppColors.secondary,
-          elevation: 6,
-          shape: const CircleBorder(),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.star, color: Colors.white, size: 20),
-              Text('Kudos',
-                  style: AppTypography.captionC2
-                      .copyWith(color: Colors.white, fontSize: 8)),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
     );
   }
 
@@ -431,7 +420,7 @@ class _ManagerDashboardScreenState
               );
             }
             return SizedBox(
-              height: 220,
+              height: 260,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: posts.length,
@@ -455,51 +444,122 @@ class _ManagerDashboardScreenState
 
   Widget _buildCoreValuesSection() {
     final values = ref.watch(coreValuesStatsProvider);
+    final profile = ref.watch(userProfileProvider).value;
+    final currentUser = ref.read(currentUserProvider);
 
-    return _SectionCard(
-      title: 'Core Values',
-      child: values.when(
-        data: (stats) {
-          if (stats.isEmpty) {
-            return Text('No data this week',
-                style: AppTypography.bodyB4
-                    .copyWith(color: AppColors.textSecondary));
-          }
-          final maxCount =
-              stats.map((s) => s.count).reduce((a, b) => a > b ? a : b);
-          return Column(
-            children: stats.map((stat) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ValueBar(
-                  label: stat.name,
-                  count: stat.count,
-                  maxCount: maxCount > 0 ? maxCount : 1,
-                  color: _valueColor(stat.name),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppRadius.allXl,
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('Core Values', style: AppTypography.headingH5),
+              ),
+              GestureDetector(
+                onTap: () {
+                  if (currentUser == null || profile == null) return;
+                  EditCompanyValuesDialog.show(
+                    context,
+                    currentValues: profile.companyValues.isNotEmpty
+                        ? profile.companyValues
+                        : AppConstants.careValues,
+                    userId: currentUser.uid,
+                    onSaved: (_) {
+                      ref.invalidate(coreValuesStatsProvider);
+                      ref.invalidate(valuesDistributionProvider);
+                    },
+                  );
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F4FF),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF0A2C6B).withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.edit_outlined,
+                          size: 14, color: const Color(0xFF0A2C6B)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Edit',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF0A2C6B),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          values.when(
+            data: (stats) {
+              if (stats.isEmpty) {
+                return Text('No data this week',
+                    style: AppTypography.bodyB4
+                        .copyWith(color: AppColors.textSecondary));
+              }
+              final maxCount =
+                  stats.map((s) => s.count).reduce((a, b) => a > b ? a : b);
+              return Column(
+                children: stats.map((stat) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 18),
+                    child: _ValueBar(
+                      label: stat.name,
+                      count: stat.count,
+                      maxCount: maxCount > 0 ? maxCount : 1,
+                      color: _valueColor(stat.name),
+                    ),
+                  );
+                }).toList(),
               );
-            }).toList(),
-          );
-        },
-        loading: () => const SizedBox(
-            height: 100, child: Center(child: CircularProgressIndicator())),
-        error: (e, _) => Text('Failed to load',
-            style:
-                AppTypography.bodyB4.copyWith(color: AppColors.error)),
+            },
+            loading: () => const SizedBox(
+                height: 100, child: Center(child: CircularProgressIndicator())),
+            error: (e, _) => Text('Failed to load',
+                style:
+                    AppTypography.bodyB4.copyWith(color: AppColors.error)),
+          ),
+        ],
       ),
     );
   }
 
   Color _valueColor(String name) {
+    final colors = [
+      AppColors.coral500,
+      AppColors.blue500,
+      AppColors.teal500,
+      AppColors.navy400,
+      const Color(0xFF9333EA),
+      const Color(0xFFEA580C),
+      const Color(0xFF16A34A),
+    ];
     switch (name.toLowerCase()) {
       case 'compassion':
-        return AppColors.coral500;
+        return const Color(0xFFEF4444);
       case 'teamwork':
-        return AppColors.blue500;
+        return const Color(0xFF0A2C6B);
       case 'excellence':
-        return AppColors.teal500;
+        return const Color(0xFF0D9488);
       default:
-        return AppColors.navy400;
+        return colors[name.hashCode.abs() % colors.length];
     }
   }
 
@@ -513,7 +573,31 @@ class _ManagerDashboardScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Rising stars', style: AppTypography.headingH4),
+        Row(
+          children: [
+            Text('Rising stars',
+                style: AppTypography.headingH4
+                    .copyWith(fontWeight: FontWeight.w700)),
+            const Spacer(),
+            ElevatedButton.icon(
+              onPressed: _openQuickRecognition,
+              icon: const Icon(Icons.star_rounded, size: 16),
+              label: const Text('Give Kudos Now'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD4AF37),
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                textStyle: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600),
+                elevation: 2,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         stars.when(
           data: (list) {
@@ -736,14 +820,18 @@ class _ManagerDashboardScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Recognition Gaps', style: AppTypography.headingH5),
+              Text('Recognition Gaps',
+                  style: AppTypography.headingH5
+                      .copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
               Text(
-                '${list.length} staff have received no recognition this week',
-                style: AppTypography.bodyB6
-                    .copyWith(color: AppColors.textSecondary),
+                '${list.length} staff have received no recognition this week.',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.3),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               if (list.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -760,44 +848,38 @@ class _ManagerDashboardScreenState
                 )
               else
                 ...list.take(5).map((gap) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 14),
                       child: Row(
                         children: [
                           _AvatarWidget(
                               name: gap.name,
                               photoBase64: gap.profilePhotoBase64,
-                              radius: 18),
-                          const SizedBox(width: 10),
+                              radius: 22),
+                          const SizedBox(width: 12),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(gap.name,
-                                    style: AppTypography.bodyB5),
-                                Text(gap.role,
-                                    style: AppTypography.captionC2
-                                        .copyWith(
-                                            color:
-                                                AppColors.textTertiary)),
-                              ],
-                            ),
+                            child: Text(gap.name,
+                                style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.3)),
                           ),
-                          SizedBox(
-                            height: 32,
-                            child: ElevatedButton.icon(
-                              onPressed: () => _giveManagerStar(gap.uid, gap.name),
-                              icon: Icon(Icons.star, size: 14),
-                              label: const Text('Give Star'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.gold400,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: AppRadius.allLg,
-                                ),
-                                textStyle: AppTypography.captionC1,
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () => _giveManagerStar(gap.uid, gap.name),
+                            icon: const Icon(Icons.star_rounded, size: 16),
+                            label: const Text('Give Kudos'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0A2C6B),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
                               ),
+                              textStyle: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600),
+                              elevation: 0,
                             ),
                           ),
                         ],
@@ -823,26 +905,50 @@ class _ManagerDashboardScreenState
 
     return distribution.when(
       data: (data) {
-        return _SectionCard(
-          title: 'Values Distribution',
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadius.allXl,
+            border: Border.all(color: AppColors.borderLight),
+          ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                height: 200,
-                child: _ValuesBarChart(data: data),
-              ),
-              const SizedBox(height: 12),
+              Text('Values Distribution',
+                  style: AppTypography.headingH5
+                      .copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text('Values Distribution',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      height: 1.3)),
+              const SizedBox(height: 20),
+              _SimpleWeekChart(data: data),
+              const SizedBox(height: 16),
               Container(
+                width: double.infinity,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
+                    horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: AppColors.blue50,
-                  borderRadius: AppRadius.allPill,
+                  color: const Color(0xFFE8EDF5),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  'Most active day: ${data.mostActiveDay}',
-                  style: AppTypography.captionC1
-                      .copyWith(color: AppColors.blue600),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today_rounded,
+                        size: 18, color: const Color(0xFF0A2C6B)),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Most active day: ${data.mostActiveDay}',
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0A2C6B)),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -863,25 +969,54 @@ class _ManagerDashboardScreenState
   Widget _buildMoraleTrendSection() {
     final trend = ref.watch(moraleTrendProvider);
 
-    return _SectionCard(
-      title: 'Morale Trend (Last 30 Days)',
-      child: trend.when(
-        data: (points) {
-          if (points.isEmpty) {
-            return Text('No data yet',
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppRadius.allXl,
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Morale Trend (Last 30 Days)',
+              style: AppTypography.headingH5
+                  .copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(
+            'Recognition activity increased 12% compared to last month.',
+            style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          trend.when(
+            data: (points) {
+              if (points.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text('No data yet',
+                        style: AppTypography.bodyB4
+                            .copyWith(color: AppColors.textSecondary)),
+                  ),
+                );
+              }
+              return SizedBox(
+                height: 200,
+                child: _MoraleTrendChart(points: points),
+              );
+            },
+            loading: () => const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator())),
+            error: (e, _) => Text('Failed to load',
                 style: AppTypography.bodyB4
-                    .copyWith(color: AppColors.textSecondary));
-          }
-          return SizedBox(
-            height: 200,
-            child: _MoraleTrendChart(points: points),
-          );
-        },
-        loading: () =>
-            const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
-        error: (e, _) => Text('Failed to load',
-            style:
-                AppTypography.bodyB4.copyWith(color: AppColors.error)),
+                    .copyWith(color: AppColors.error)),
+          ),
+        ],
       ),
     );
   }
@@ -894,38 +1029,46 @@ class _ManagerDashboardScreenState
     final health = ref.watch(cultureHealthProvider);
 
     return health.when(
-      data: (data) => _SectionCard(
-        title: 'Culture Health Score',
+      data: (data) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppRadius.allXl,
+          border: Border.all(color: AppColors.borderLight),
+        ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 180,
-              width: 180,
-              child: _CultureGauge(score: data.score),
+            Text('Culture Health Score',
+                style: AppTypography.headingH5
+                    .copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text('Overall Culture Health Score',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.3)),
+            const SizedBox(height: 24),
+            Center(
+              child: SizedBox(
+                height: 180,
+                width: 180,
+                child: _CultureGauge(score: data.score),
+              ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: _HealthMetric(
-                    label: 'Participation Rate',
-                    value: '${data.participationRate.toStringAsFixed(0)}%',
-                  ),
-                ),
-                Expanded(
-                  child: _HealthMetric(
-                    label: 'Avg Stars / Staff',
-                    value: data.avgStarsPerStaff.toStringAsFixed(1),
-                  ),
-                ),
-                Expanded(
-                  child: _HealthMetric(
-                    label: 'GDPR Clean Rate',
-                    value: '${data.gdprCleanRate.toStringAsFixed(0)}%',
-                  ),
-                ),
-              ],
-            ),
+            const SizedBox(height: 24),
+            _HealthMetricRow(
+                label: 'Participation Rate:',
+                value: '${data.participationRate.toStringAsFixed(0)}%'),
+            const SizedBox(height: 8),
+            _HealthMetricRow(
+                label: 'Average Stars per Staff:',
+                value: data.avgStarsPerStaff.toStringAsFixed(1)),
+            const SizedBox(height: 8),
+            _HealthMetricRow(
+                label: 'GDPR Clean Rate:',
+                value: '${data.gdprCleanRate.toStringAsFixed(0)}%'),
           ],
         ),
       ),
@@ -996,9 +1139,6 @@ class _ReviewCard extends StatelessWidget {
 
   const _ReviewCard({required this.post, required this.ref});
 
-  /// Shows a dialog for entering a reason.
-  /// Returns the reason string on submit (can be empty string for optional reasons).
-  /// Returns null ONLY when dialog is cancelled.
   Future<String?> _showReasonDialog(
     BuildContext context, {
     required String title,
@@ -1062,7 +1202,7 @@ class _ReviewCard extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx), // returns null → cancelled
+            onPressed: () => Navigator.pop(ctx),
             child: Text('Cancel',
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
@@ -1075,7 +1215,6 @@ class _ReviewCard extends StatelessWidget {
                 );
                 return;
               }
-              // Return empty string for "submitted with no text" vs null for "cancelled"
               Navigator.pop(ctx, text);
             },
             style: ElevatedButton.styleFrom(
@@ -1093,91 +1232,136 @@ class _ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 280,
-      padding: const EdgeInsets.all(14),
+      width: 300,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: AppRadius.allXl,
-        border: Border.all(color: AppColors.borderLight),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Author row ──
           Row(
             children: [
               _AvatarWidget(
                   name: post.authorName,
                   photoBase64: null,
-                  radius: 18),
-              const SizedBox(width: 8),
+                  radius: 22),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(post.authorName,
-                        style: AppTypography.bodyB5,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
                     Text(
-                      _formatRole(post.authorRole),
-                      style: AppTypography.captionC2
-                          .copyWith(color: AppColors.textTertiary),
+                      post.authorName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A2E),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text(
+                          _formatRole(post.authorRole),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF8E8E93),
+                          ),
+                        ),
+                        if (post.hasGdprFlag) ...[
+                          const SizedBox(width: 6),
+                          const Text(
+                            '\u2022',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF8E8E93),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF7ED),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.warning_amber_rounded,
+                                    size: 12,
+                                    color: const Color(0xFFEA580C)),
+                                const SizedBox(width: 3),
+                                const Text(
+                                  'GDPR',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFEA580C),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
               ),
-              if (post.hasGdprFlag)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.red50,
-                    borderRadius: AppRadius.allPill,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.flag, size: 10, color: AppColors.red500),
-                      const SizedBox(width: 2),
-                      Text('GDPR',
-                          style: AppTypography.captionC2
-                              .copyWith(color: AppColors.red500, fontSize: 9)),
-                    ],
-                  ),
-                ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
+
+          // ── Content ──
           Expanded(
             child: Text(
               post.content,
-              style: AppTypography.bodyB6
-                  .copyWith(color: AppColors.textSecondary),
-              maxLines: 3,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF6B7280),
+                height: 1.5,
+              ),
+              maxLines: 4,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(height: 10),
-          // ── Three action buttons: Reject / Request Edit / Approve ──
+          const SizedBox(height: 14),
+
+          // ── Two buttons: Reject + Approve ──
           Row(
             children: [
               // Reject button
               Expanded(
                 child: SizedBox(
-                  height: 32,
+                  height: 42,
                   child: OutlinedButton(
                     onPressed: () async {
                       final reason = await _showReasonDialog(
                         context,
                         title: post.hasGdprFlag
-                            ? 'Reject – GDPR Violation'
+                            ? 'Reject \u2013 GDPR Violation'
                             : 'Reject Post',
                         hintText: post.hasGdprFlag
-                            ? 'Explain the GDPR violation…'
+                            ? 'Explain the GDPR violation\u2026'
                             : 'Reason for rejection (optional)',
                         isRequired: post.hasGdprFlag,
                       );
-                      // null means dialog was cancelled → do nothing
                       if (reason == null) return;
                       try {
                         await rejectPost(
@@ -1195,77 +1379,32 @@ class _ReviewCard extends StatelessWidget {
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to reject: $e')),
+                            SnackBar(content: Text('Failed to reject: \$e')),
                           );
                         }
                       }
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.red500,
-                      side: BorderSide(color: AppColors.red300),
+                      foregroundColor: const Color(0xFF374151),
+                      side: const BorderSide(color: Color(0xFFD1D5DB)),
                       padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
-                        borderRadius: AppRadius.allLg,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: const Text('Reject',
-                        style: TextStyle(fontSize: 11)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        )),
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
-              // Request Edit button
-              Expanded(
-                child: SizedBox(
-                  height: 32,
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      final reason = await _showReasonDialog(
-                        context,
-                        title: 'Request Edit',
-                        hintText: 'What needs to be changed?',
-                        isRequired: true,
-                      );
-                      if (reason == null) return; // cancelled
-                      try {
-                        await requestEditPost(
-                          post.postId,
-                          ref.read(currentUserProvider)?.uid ?? '',
-                          reason: reason,
-                        );
-                        ref.invalidate(pendingPostsProvider);
-                        ref.invalidate(dashboardStatsProvider);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Edit requested')),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to request edit: $e')),
-                          );
-                        }
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.gold600,
-                      side: BorderSide(color: AppColors.gold300),
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: AppRadius.allLg,
-                      ),
-                    ),
-                    child: const Text('Edit',
-                        style: TextStyle(fontSize: 11)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 10),
               // Approve button
               Expanded(
                 child: SizedBox(
-                  height: 32,
+                  height: 56,
                   child: ElevatedButton(
                     onPressed: () async {
                       try {
@@ -1282,21 +1421,25 @@ class _ReviewCard extends StatelessWidget {
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to approve: $e')),
+                            SnackBar(content: Text('Failed to approve: \$e')),
                           );
                         }
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.success,
+                      backgroundColor: const Color(0xFF0A2C6B),
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.zero,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: AppRadius.allLg,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: const Text('Approve',
-                        style: TextStyle(fontSize: 11)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        )),
                   ),
                 ),
               ),
@@ -1368,6 +1511,27 @@ class _ValueBar extends StatelessWidget {
     required this.color,
   });
 
+  IconData _valueIcon(String name) {
+    switch (name.toLowerCase()) {
+      case 'compassion':
+        return Icons.favorite_rounded;
+      case 'teamwork':
+        return Icons.people_rounded;
+      case 'excellence':
+        return Icons.auto_awesome_rounded;
+      case 'respect':
+        return Icons.handshake_rounded;
+      case 'kindness':
+        return Icons.volunteer_activism_rounded;
+      case 'integrity':
+        return Icons.shield_rounded;
+      case 'empowerment':
+        return Icons.bolt_rounded;
+      default:
+        return Icons.star_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final fraction = count / maxCount;
@@ -1375,22 +1539,55 @@ class _ValueBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: AppTypography.bodyB5),
-            Text(count.toString(),
-                style:
-                    AppTypography.bodyB5.copyWith(fontWeight: FontWeight.w600)),
+            // Icon
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                _valueIcon(label),
+                size: 18,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Label
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+            ),
+            // Count
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: AppRadius.allPill,
-          child: LinearProgressIndicator(
-            value: fraction,
-            backgroundColor: AppColors.neutral100,
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-            minHeight: 8,
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(left: 44),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: fraction,
+              backgroundColor: const Color(0xFFF3F4F6),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 6,
+            ),
           ),
         ),
       ],
@@ -1406,72 +1603,112 @@ class _RisingStarCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: AppRadius.allXl,
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: Column(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Blue left accent strip
+            Container(width: 4, color: const Color(0xFF3B82F6)),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Avatar + Name + Description
           Row(
             children: [
               _AvatarWidget(
                   name: star.name,
                   photoBase64: star.profilePhotoBase64,
-                  radius: 22),
-              const SizedBox(width: 12),
+                  radius: 24),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(star.name, style: AppTypography.bodyB3),
+                    Text(star.name,
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1A1A2E))),
+                    const SizedBox(height: 2),
                     Text(star.description,
-                        style: AppTypography.captionC1
-                            .copyWith(color: AppColors.textSecondary)),
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            height: 1.3)),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          // Star count + Points
           Row(
             children: [
-              _StatPill(
-                icon: Icons.star,
-                iconColor: AppColors.gold400,
-                label: '${star.starsLast60Days} stars (60d)',
-              ),
-              const SizedBox(width: 8),
-              _StatPill(
-                icon: Icons.emoji_events,
-                iconColor: AppColors.coral500,
-                label: '${star.points} pts',
-              ),
-              const Spacer(),
-              SizedBox(
-                height: 30,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppRadius.allLg,
-                    ),
-                  ),
-                  child: Text('View Full Profile',
-                      style: AppTypography.captionC1
-                          .copyWith(color: Colors.white)),
-                ),
-              ),
+              Icon(Icons.star_rounded,
+                  size: 18, color: const Color(0xFFD4AF37)),
+              const SizedBox(width: 4),
+              Text('${star.starsLast60Days} stars (60d)',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A2E))),
+              const SizedBox(width: 20),
+              Icon(Icons.emoji_events_outlined,
+                  size: 18, color: const Color(0xFFD4AF37)),
+              const SizedBox(width: 4),
+              Text('${star.points} pts',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A2E))),
             ],
           ),
+          const SizedBox(height: 14),
+          // Full-width View Full Profile button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => context.push('/user-profile/${star.uid}'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0A2C6B),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: const Text('View Full Profile',
+                  style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600)),
+            ),
+          ),
         ],
+      ),
+              ),
+            ),
+          ],
+        ),
+        ),
       ),
     );
   }
@@ -1518,38 +1755,44 @@ class _TeamMemberRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          _AvatarWidget(
-              name: member.name,
-              photoBase64: member.profilePhotoBase64,
-              radius: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(member.name, style: AppTypography.bodyB5),
-          ),
-          Icon(Icons.star, size: 16, color: AppColors.gold400),
-          const SizedBox(width: 4),
-          Text('${member.totalStars}',
-              style: AppTypography.bodyB5
-                  .copyWith(fontWeight: FontWeight.w600)),
-          if (onGiveStar != null) ...[
-            const SizedBox(width: 8),
-            SizedBox(
-              height: 28,
-              width: 28,
-              child: IconButton(
-                onPressed: onGiveStar,
-                padding: EdgeInsets.zero,
-                icon: Icon(Icons.star_outline,
-                    size: 20, color: AppColors.gold400),
-                tooltip: 'Give Manager Star',
+    return GestureDetector(
+      onTap: onGiveStar,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            _AvatarWidget(
+                name: member.name,
+                photoBase64: member.profilePhotoBase64,
+                radius: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                member.name,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.star_rounded,
+              size: 20,
+              color: Color(0xFFD4AF37),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '${member.totalStars}',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFFD4AF37),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1565,24 +1808,38 @@ class _ChampionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
           _AvatarWidget(
               name: member.name,
               photoBase64: member.profilePhotoBase64,
-              radius: 18),
-          const SizedBox(width: 10),
+              radius: 22),
+          const SizedBox(width: 14),
           Expanded(
-            child: Text(member.name, style: AppTypography.bodyB5),
+            child: Text(
+              member.name,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
           ),
-          Icon(Icons.emoji_events,
-              size: 16,
-              color: rank <= 3 ? AppColors.gold400 : AppColors.neutral400),
-          const SizedBox(width: 4),
-          Text('${member.totalStars} pts',
-              style: AppTypography.bodyB5
-                  .copyWith(fontWeight: FontWeight.w600)),
+          const Icon(
+            Icons.emoji_events_rounded,
+            size: 20,
+            color: Color(0xFFD4AF37),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${member.totalStars} pts',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFFD4AF37),
+            ),
+          ),
         ],
       ),
     );
@@ -1688,24 +1945,27 @@ class _ErrorCard extends StatelessWidget {
 }
 
 /// Health metric column
-class _HealthMetric extends StatelessWidget {
+class _HealthMetricRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _HealthMetric({required this.label, required this.value});
+  const _HealthMetricRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(value,
-            style: AppTypography.headingH5
-                .copyWith(color: AppColors.primary)),
-        const SizedBox(height: 2),
         Text(label,
-            style: AppTypography.captionC2
-                .copyWith(color: AppColors.textSecondary),
-            textAlign: TextAlign.center),
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1A1A2E))),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A2E))),
       ],
     );
   }
@@ -1857,6 +2117,57 @@ class _ValuesBarChart extends StatelessWidget {
   }
 }
 
+/// Simple week activity chart – colored blocks per day
+class _SimpleWeekChart extends StatelessWidget {
+  final ValuesDistribution data;
+
+  const _SimpleWeekChart({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    // Calculate totals per day
+    final totals = days.map((d) {
+      final dayData = data.byDay[d] ?? {};
+      return dayData.values.fold<int>(0, (sum, v) => sum + v);
+    }).toList();
+
+    final maxTotal = totals.reduce((a, b) => a > b ? a : b).clamp(1, 999);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: List.generate(days.length, (i) {
+        final ratio = totals[i] / maxTotal;
+        // Navy shades: darker = more activity, lighter = less
+        final color = ratio > 0
+            ? Color.lerp(
+                const Color(0xFFB0C4DE), const Color(0xFF0A2C6B), ratio)!
+            : const Color(0xFFE0E0E0);
+
+        return Column(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(days[i],
+                style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500)),
+          ],
+        );
+      }),
+    );
+  }
+}
+
 /// Morale trend line chart
 class _MoraleTrendChart extends StatelessWidget {
   final List<MoraleTrendPoint> points;
@@ -1967,17 +2278,11 @@ class _CultureGauge extends StatelessWidget {
     return CustomPaint(
       painter: _GaugePainter(normalised),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('${score.toInt()}%',
-                style: AppTypography.displayD1
-                    .copyWith(color: AppColors.primary)),
-            Text('Health Score',
-                style: AppTypography.captionC1
-                    .copyWith(color: AppColors.textSecondary)),
-          ],
-        ),
+        child: Text('${score.toInt()}%',
+            style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0A2C6B))),
       ),
     );
   }
@@ -2009,15 +2314,8 @@ class _GaugePainter extends CustomPainter {
       bgPaint,
     );
 
-    // Value arc
-    Color arcColor;
-    if (fraction >= 0.7) {
-      arcColor = AppColors.success;
-    } else if (fraction >= 0.4) {
-      arcColor = AppColors.warning;
-    } else {
-      arcColor = AppColors.error;
-    }
+    // Value arc – always navy blue per design
+    const arcColor = Color(0xFF0A2C6B);
 
     final valuePaint = Paint()
       ..color = arcColor

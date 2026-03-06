@@ -38,6 +38,10 @@ class UserProfile {
   // Marketing preferences
   final bool agreeToUpdates;
 
+  // Company setup
+  final bool coreValuesSetupComplete;
+  final List<String> companyValues;
+
   UserProfile({
     required this.uid,
     required this.email,
@@ -65,6 +69,8 @@ class UserProfile {
     this.emailNotifications = true,
     this.pushNotifications = true,
     this.agreeToUpdates = false,
+    this.coreValuesSetupComplete = false,
+    this.companyValues = const [],
   });
 
   factory UserProfile.fromFirestore(DocumentSnapshot doc) {
@@ -105,6 +111,10 @@ class UserProfile {
       emailNotifications: data['emailNotifications'] ?? true,
       pushNotifications: data['pushNotifications'] ?? true,
       agreeToUpdates: data['agreeToUpdates'] ?? false,
+      coreValuesSetupComplete: data['coreValuesSetupComplete'] ?? false,
+      companyValues: data['companyValues'] != null
+          ? List<String>.from(data['companyValues'])
+          : [],
     );
   }
 

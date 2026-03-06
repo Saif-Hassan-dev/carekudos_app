@@ -263,7 +263,7 @@ class _GiveStarBottomSheetState extends State<GiveStarBottomSheet> {
               // ── CTA Button ──
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: _canSubmit ? _submit : null,
                   style: ElevatedButton.styleFrom(

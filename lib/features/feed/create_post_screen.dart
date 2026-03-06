@@ -525,7 +525,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       // ── Post Button ──
                       SizedBox(
                         width: double.infinity,
-                        height: 52,
+                        height: 56,
                         child: ElevatedButton(
                           onPressed: _canPost && !_isSubmitting
                               ? _submitPost

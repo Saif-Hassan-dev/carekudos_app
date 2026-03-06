@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/utils/constants.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/auth/permissions_provider.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/push_notification_service.dart';
 
@@ -153,6 +154,20 @@ class CqcReportData {
 
 final _firestore = FirebaseFirestore.instance;
 
+/// The active company values — loaded from the manager's profile.
+/// Falls back to AppConstants.careValues if none configured.
+final companyValuesProvider = Provider<List<String>>((ref) {
+  final profile = ref.watch(userProfileProvider);
+  return profile.when(
+    data: (p) {
+      if (p != null && p.companyValues.isNotEmpty) return p.companyValues;
+      return AppConstants.careValues;
+    },
+    loading: () => AppConstants.careValues,
+    error: (_, __) => AppConstants.careValues,
+  );
+});
+
 /// Dashboard stats (pending, GDPR flags, active staff, weekly recognitions)
 final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
   final now = DateTime.now();
@@ -255,8 +270,9 @@ final coreValuesStatsProvider =
       .where('approvalStatus', isEqualTo: 'approved')
       .get();
 
+  final activeValues = ref.read(companyValuesProvider);
   final counts = <String, int>{};
-  for (final value in AppConstants.careValues) {
+  for (final value in activeValues) {
     counts[value] = 0;
   }
   for (final doc in snap.docs) {
@@ -434,9 +450,10 @@ final valuesDistributionProvider =
       .get();
 
   final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  final activeValues = ref.read(companyValuesProvider);
   final byDay = <String, Map<String, int>>{};
   for (final d in days) {
-    byDay[d] = {for (final v in AppConstants.careValues) v: 0};
+    byDay[d] = {for (final v in activeValues) v: 0};
   }
 
   final dayCounts = <String, int>{};
@@ -612,13 +629,14 @@ final cqcReportProvider = FutureProvider<CqcReportData>((ref) async {
         : null;
     if (createdAt == null || createdAt.isBefore(startOfMonth)) continue;
     final cat = data['category'] as String? ?? '';
-    if (AppConstants.careValues.contains(cat)) {
+    final activeValues = ref.read(companyValuesProvider);
+    if (activeValues.contains(cat)) {
       taggedCount++;
       valueCounts[cat] = (valueCounts[cat] ?? 0) + 1;
     }
   }
 
-  final totalValues = AppConstants.careValues.length;
+  final totalValues = ref.read(companyValuesProvider).length;
   final coveredValues = valueCounts.length;
   final alignmentTrend =
       totalValues > 0 ? (coveredValues / totalValues * 100) : 0.0;

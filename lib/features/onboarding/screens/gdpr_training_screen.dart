@@ -219,7 +219,7 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
               // Continue button – full width, pinned at bottom
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: canContinue ? _nextQuestion : null,
                   style: ElevatedButton.styleFrom(

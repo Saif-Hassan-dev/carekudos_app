@@ -615,7 +615,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 // ══════════════════════════════════
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
+                  height: 56,
                   child: ElevatedButton(
                     onPressed:
                         _canSubmit && !_isLoading ? _createAccount : null,

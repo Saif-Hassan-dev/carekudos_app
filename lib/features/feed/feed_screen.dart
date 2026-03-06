@@ -348,7 +348,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       subtitle:
           'Be the first to share an achievement!\nBe specific and GDPR-safe.',
       action: SizedBox(
-        height: 48,
+        height: 56,
         child: ElevatedButton.icon(
           onPressed: () => context.push('/create-post'),
           icon: const Icon(Icons.add, size: 20),
