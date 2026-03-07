@@ -23,7 +23,6 @@ class _SplashScreenState extends State<SplashScreen>
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
 
-    // Navigate after 2.5 seconds
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) widget.onComplete();
     });
