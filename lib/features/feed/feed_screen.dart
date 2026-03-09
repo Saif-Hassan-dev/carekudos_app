@@ -245,9 +245,13 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     }
 
                     // Filter to only approved posts (avoids composite index)
+                    // Also exclude deactivated and deleted posts
                     final approvedDocs = snapshot.data!.docs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final status = data['approvalStatus'] as String?;
+                      final isActive = data['isActive'] as bool? ?? true;
+                      final isDeleted = data['isDeleted'] as bool? ?? false;
+                      if (isDeleted || !isActive) return false;
                       // Show approved posts, plus legacy posts without status
                       return status == 'approved' || status == null;
                     }).toList();
@@ -382,6 +386,7 @@ class _PostCard extends ConsumerStatefulWidget {
   final DateTime createdAt;
   final bool initialHasGivenStar;
   final VoidCallback? onStarGiven;
+  final VoidCallback? onPostChanged;
 
   const _PostCard({
     super.key,
@@ -395,6 +400,7 @@ class _PostCard extends ConsumerStatefulWidget {
     required this.createdAt,
     this.initialHasGivenStar = false,
     this.onStarGiven,
+    this.onPostChanged,
   });
 
   @override
@@ -405,6 +411,7 @@ class _PostCardState extends ConsumerState<_PostCard>
     with AutomaticKeepAliveClientMixin {
   late bool _hasGivenStar;
   bool _isGivingStar = false;
+  int _lastGivenPoints = 0; // Track actual points given for correct removal
 
   @override
   bool get wantKeepAlive => true;
@@ -616,6 +623,11 @@ class _PostCardState extends ConsumerState<_PostCard>
                     color: Color(0xFFB0B0B0),
                   ),
                 ),
+                // ── Post owner actions menu ──
+                if (_isOwnPost) ...[
+                  const SizedBox(width: 4),
+                  _buildPostActionsMenu(),
+                ],
               ],
             ),
             const SizedBox(height: 14),
@@ -676,7 +688,7 @@ class _PostCardState extends ConsumerState<_PostCard>
                   onTap: (!canGiveStars || _isGivingStar)
                       ? null
                       : () => _hasGivenStar
-                          ? _removeStar(multiplier)
+                          ? _removeStar(_lastGivenPoints > 0 ? _lastGivenPoints : multiplier)
                           : _openGiveStarSheet(),
                   child: Container(
                     padding:
@@ -727,7 +739,145 @@ class _PostCardState extends ConsumerState<_PostCard>
       ),
     ),
     );
-  }  Future<void> _openGiveStarSheet() async {
+  }
+
+  // ── Post owner actions popup menu ──
+  Widget _buildPostActionsMenu() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, size: 20, color: Color(0xFF8E8E93)),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) {
+        switch (value) {
+          case 'deactivate':
+            _togglePostActive(false);
+            break;
+          case 'activate':
+            _togglePostActive(true);
+            break;
+          case 'delete':
+            _showDeleteConfirmation();
+            break;
+        }
+      },
+      itemBuilder: (_) => [
+        const PopupMenuItem(
+          value: 'deactivate',
+          child: Row(
+            children: [
+              Icon(Icons.visibility_off, size: 18, color: Color(0xFFF57C00)),
+              SizedBox(width: 10),
+              Text('Deactivate Post',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF1A1A2E))),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_forever, size: 18, color: Color(0xFFEF4444)),
+              SizedBox(width: 10),
+              Text('Delete Post',
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFFEF4444),
+                      fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _togglePostActive(bool active) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .doc(widget.postId)
+          .update({'isActive': active});
+      if (mounted) {
+        context.showSnackBar(
+            active ? 'Post activated' : 'Post deactivated');
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showErrorSnackBar('Failed to update post: $e');
+      }
+    }
+  }
+
+  void _showDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 26),
+            SizedBox(width: 10),
+            Text('Delete Post',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A2E))),
+          ],
+        ),
+        content: const Text(
+          'This post is going to be deleted from the whole system.\n\nAre you sure you want to delete it?',
+          style: TextStyle(fontSize: 14, color: Color(0xFF3C3C43), height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF8E8E93))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deletePost();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: const Text('Delete',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deletePost() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .doc(widget.postId)
+          .update({
+        'isDeleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted) {
+        context.showSnackBar('Post deleted');
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showErrorSnackBar('Failed to delete post: $e');
+      }
+    }
+  }
+
+  Future<void> _openGiveStarSheet() async {
     // Prevent self-starring
     final currentUser = ref.read(currentUserProvider);
     if (currentUser != null && currentUser.uid == widget.authorId) {
@@ -735,6 +885,8 @@ class _PostCardState extends ConsumerState<_PostCard>
       return;
     }
     final starsLeft = ref.read(starsLeftTodayProvider);
+    final userProfile = ref.read(userProfileProvider).value;
+    final userRole = userProfile?.role ?? 'care_worker';
     final result = await GiveStarBottomSheet.show(
       context: context,
       postId: widget.postId,
@@ -742,6 +894,7 @@ class _PostCardState extends ConsumerState<_PostCard>
       category: widget.category,
       starsLeftToday: starsLeft,
       maxStarsPerDay: AppConstants.maxStarsPerDay,
+      userRole: userRole,
       onGiveStar: ({
         required String starType,
         required int points,
@@ -806,7 +959,10 @@ class _PostCardState extends ConsumerState<_PostCard>
       // Invalidate the stars-given-today cache
       ref.invalidate(starsGivenTodayProvider);
       if (mounted) {
-        setState(() => _hasGivenStar = true);
+        setState(() {
+          _hasGivenStar = true;
+          _lastGivenPoints = points;
+        });
       }
     } catch (e) {
       if (mounted) {

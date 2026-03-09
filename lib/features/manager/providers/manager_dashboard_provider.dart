@@ -788,6 +788,29 @@ Future<void> requestEditPost(String postId, String managerId, {String? reason}) 
     action: 'edit_requested',
     reason: reason,
   );
+
+  // Notify the author that edits are needed (best-effort)
+  try {
+    final postDoc = await _firestore
+        .collection(AppConstants.postsCollection)
+        .doc(postId)
+        .get();
+    final authorId = postDoc.data()?['authorId'] as String?;
+    if (authorId != null && authorId.isNotEmpty) {
+      await NotificationService.createNotification(
+        userId: authorId,
+        type: NotificationType.system,
+        title: 'Edits Requested',
+        message: reason != null && reason.isNotEmpty
+            ? 'A manager has requested edits on your post: $reason'
+            : 'A manager has requested edits on your post. Please review and update it.',
+        relatedPostId: postId,
+        relatedUserId: managerId,
+      );
+    }
+  } catch (e) {
+    debugPrint('[RequestEdit] Notification failed: $e');
+  }
 }
 
 /// Give a manager star to a staff member.

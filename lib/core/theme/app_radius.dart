@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// App border radius constants from Figma design system
 abstract class AppRadius {
-  // ============================================
-  // RADIUS VALUES
-  // ============================================
+
   static const double sm = 4.0;
   static const double md = 6.0;
   static const double lg = 8.0;
@@ -12,10 +9,6 @@ abstract class AppRadius {
   static const double xxl = 16.0;
   static const double pill = 9999.0;
   static const double circle = 9999.0;
-
-  // ============================================
-  // BORDER RADIUS HELPERS
-  // ============================================
   static const BorderRadius allSm = BorderRadius.all(Radius.circular(sm));
   static const BorderRadius allMd = BorderRadius.all(Radius.circular(md));
   static const BorderRadius allLg = BorderRadius.all(Radius.circular(lg));
@@ -41,9 +34,6 @@ abstract class AppRadius {
     bottomRight: Radius.circular(lg),
   );
 
-  // ============================================
-  // SHAPE HELPERS
-  // ============================================
   static const RoundedRectangleBorder shapeSm = RoundedRectangleBorder(
     borderRadius: allSm,
   );

@@ -376,6 +376,34 @@ class _ManagerDashboardScreenState
         Row(
           children: [
             Text('Needs review', style: AppTypography.headingH4),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => context.push('/audit-log'),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F4FF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.history, size: 14,
+                        color: const Color(0xFF0A2C6B)),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Audit Log',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0A2C6B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const Spacer(),
             pending.when(
               data: (posts) => Container(
@@ -1343,7 +1371,59 @@ class _ReviewCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // ── Two buttons: Reject + Approve ──
+          // ── Three buttons: Reject + Request Edits + Approve ──
+          // Request Edits button (full width, for GDPR-flagged posts or any post)
+          if (post.hasGdprFlag) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 38,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final reason = await _showReasonDialog(
+                    context,
+                    title: 'Request Edits',
+                    hintText: 'What should the carer change?',
+                    isRequired: true,
+                  );
+                  if (reason == null || reason.isEmpty) return;
+                  try {
+                    await requestEditPost(
+                      post.postId,
+                      ref.read(currentUserProvider)?.uid ?? '',
+                      reason: reason,
+                    );
+                    ref.invalidate(pendingPostsProvider);
+                    ref.invalidate(dashboardStatsProvider);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Edit request sent to carer')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text('Failed to request edits: \$e')),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.edit_outlined, size: 15),
+                label: const Text('Request Edits',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFEA580C),
+                  side: const BorderSide(color: Color(0xFFFED7AA)),
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           Row(
             children: [
               // Reject button

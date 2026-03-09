@@ -56,6 +56,14 @@ class SettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _SettingsCard(
                     iconPath:
+                        'assets/icons/CareKudos (13)/vuesax/twotone/shield-security.png',
+                    title: 'GDPR Posting Guide',
+                    subtitle: 'Golden rules for safe posting',
+                    onTap: () => context.push('/gdpr-guidelines'),
+                  ),
+                  const SizedBox(height: 12),
+                  _SettingsCard(
+                    iconPath:
                         'assets/icons/CareKudos (16)/vuesax/twotone/notification.png',
                     title: 'Notifications',
                     subtitle: 'Manage notification preferences',

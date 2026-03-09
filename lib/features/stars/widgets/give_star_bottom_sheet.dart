@@ -22,6 +22,7 @@ class GiveStarBottomSheet extends StatefulWidget {
   final String category;
   final int starsLeftToday;
   final int maxStarsPerDay;
+  final String userRole; // 'care_worker', 'senior_carer', 'manager', 'family_member'
   final Future<void> Function({
     required String starType,
     required int points,
@@ -35,6 +36,7 @@ class GiveStarBottomSheet extends StatefulWidget {
     required this.category,
     required this.starsLeftToday,
     required this.maxStarsPerDay,
+    required this.userRole,
     required this.onGiveStar,
   });
 
@@ -46,6 +48,7 @@ class GiveStarBottomSheet extends StatefulWidget {
     required String category,
     required int starsLeftToday,
     required int maxStarsPerDay,
+    required String userRole,
     required Future<void> Function({
       required String starType,
       required int points,
@@ -62,6 +65,7 @@ class GiveStarBottomSheet extends StatefulWidget {
         category: category,
         starsLeftToday: starsLeftToday,
         maxStarsPerDay: maxStarsPerDay,
+        userRole: userRole,
         onGiveStar: onGiveStar,
       ),
     );
@@ -72,13 +76,25 @@ class GiveStarBottomSheet extends StatefulWidget {
 }
 
 class _GiveStarBottomSheetState extends State<GiveStarBottomSheet> {
-  static const _starTypes = [
+  static const _allStarTypes = [
     StarType(label: 'Peer', starCount: 1, points: 1),
     StarType(label: 'Manager', starCount: 3, points: 3),
     StarType(label: 'Family', starCount: 5, points: 5),
   ];
 
-  int _selectedIndex = 0; // default: Peer
+  /// Returns only the star type(s) allowed for the current user role.
+  List<StarType> get _starTypes {
+    switch (widget.userRole) {
+      case 'manager':
+        return _allStarTypes.where((t) => t.label == 'Manager').toList();
+      case 'family_member':
+        return _allStarTypes.where((t) => t.label == 'Family').toList();
+      default: // care_worker, senior_carer
+        return _allStarTypes.where((t) => t.label == 'Peer').toList();
+    }
+  }
+
+  int _selectedIndex = 0; // default: first (and only) option
   final _noteController = TextEditingController();
   bool _isSubmitting = false;
 
@@ -162,30 +178,34 @@ class _GiveStarBottomSheetState extends State<GiveStarBottomSheet> {
               ),
               const SizedBox(height: 24),
 
-              // ── Choose star type label ──
-              const Text(
-                'Choose star type',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A2E),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // ── Star type cards ──
-              ...List.generate(_starTypes.length, (i) {
-                final type = _starTypes[i];
-                final isSelected = _selectedIndex == i;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _StarTypeCard(
-                    type: type,
-                    isSelected: isSelected,
-                    onTap: () => setState(() => _selectedIndex = i),
+              // ── Star type info ──
+              if (_starTypes.length == 1) ...[
+                // Single star type — show as a fixed info badge instead of a selector
+                _buildFixedStarBadge(_starTypes.first),
+              ] else ...[
+                const Text(
+                  'Choose star type',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A2E),
                   ),
-                );
-              }),
+                ),
+                const SizedBox(height: 12),
+                // ── Star type cards ──
+                ...List.generate(_starTypes.length, (i) {
+                  final type = _starTypes[i];
+                  final isSelected = _selectedIndex == i;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _StarTypeCard(
+                      type: type,
+                      isSelected: isSelected,
+                      onTap: () => setState(() => _selectedIndex = i),
+                    ),
+                  );
+                }),
+              ],
 
               const SizedBox(height: 20),
 
@@ -299,6 +319,54 @@ class _GiveStarBottomSheetState extends State<GiveStarBottomSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Fixed badge shown when there is only one star type for the user's role.
+  Widget _buildFixedStarBadge(StarType type) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F4FF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF0A2C6B), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '${type.label} Star',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0A2C6B),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(
+              type.starCount,
+              (_) => const Padding(
+                padding: EdgeInsets.only(right: 2),
+                child: Icon(
+                  Icons.star_rounded,
+                  color: Color(0xFFD4AF37),
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          const Spacer(),
+          Text(
+            '${type.points} point${type.points > 1 ? 's' : ''}',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF0A2C6B),
+            ),
+          ),
+        ],
       ),
     );
   }

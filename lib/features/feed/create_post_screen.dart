@@ -29,6 +29,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   String _selectedVisibility = 'team';
   GdprStatus _gdprStatus = GdprStatus.warning;
   List<String> _gdprIssues = [];
+  List<String> _gdprSuggestions = [];
+  bool _hasRealGdprRisk = false;
   bool _isSubmitting = false;
   bool _hasDraft = false;
 
@@ -105,10 +107,16 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   }
 
   void _onTextChanged() {
-    final result = GdprChecker.check(_contentController.text);
+    final text = _contentController.text;
+    final result = GdprChecker.check(text);
+    final suggestions = GdprChecker.getSuggestions(text);
     setState(() {
       _gdprStatus = result.status;
       _gdprIssues = result.issues;
+      _gdprSuggestions = suggestions;
+      // Track whether the warning is a real GDPR risk vs just "too short"
+      _hasRealGdprRisk = result.status != GdprStatus.safe &&
+          !result.issues.every((i) => i.startsWith('Post should be'));
     });
   }
 
@@ -140,8 +148,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final needsApproval = userProfile.postCount < 5;
       final hasGdprWarning = _gdprStatus == GdprStatus.warning;
+      // GDPR compliance: flagged posts ALWAYS need manager approval
+      final needsApproval = userProfile.postCount < 5 || hasGdprWarning;
 
       await FirebaseFirestore.instance
           .collection(AppConstants.postsCollection)
@@ -238,6 +247,36 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         letterSpacing: -0.3,
                       ),
                     ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => context.push('/gdpr-guidelines'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F4FF),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.shield_outlined,
+                                size: 14,
+                                color: const Color(0xFF0A2C6B)),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'GDPR Guide',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0A2C6B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                   ],
                 ),
               ),
@@ -351,20 +390,45 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         ),
                       ),
 
-                      // ── GDPR Indicator ──
+                      // ── GDPR / Length Indicator ──
+                      // 1. Too short → show length hint (not GDPR)
+                      if (_contentController.text.trim().isNotEmpty &&
+                          _contentController.text.trim().length < AppConstants.minPostLength &&
+                          !_hasRealGdprRisk) ...[
+                        const SizedBox(height: 12),
+                        _buildTooShortHint(),
+                      ],
+                      // 2. Safe + meets min length
                       if (_gdprStatus == GdprStatus.safe &&
                           _contentController.text.trim().length >= AppConstants.minPostLength) ...[
                         const SizedBox(height: 12),
                         _buildContentSafeBadge(),
                       ],
+                      // 3. GDPR warning (real risk, any length)
                       if (_gdprStatus == GdprStatus.warning &&
-                          _contentController.text.trim().isNotEmpty) ...[
+                          _hasRealGdprRisk) ...[
                         const SizedBox(height: 12),
                         _buildGdprWarning(),
+                        if (_gdprSuggestions.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _buildGdprSuggestions(),
+                        ],
                       ],
+                      // 4. GDPR unsafe (real risk, any length)
                       if (_gdprStatus == GdprStatus.unsafe) ...[
                         const SizedBox(height: 12),
                         _buildGdprIndicator(),
+                        if (_gdprSuggestions.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _buildGdprSuggestions(),
+                        ],
+                      ],
+
+                      // ── Visibility warning for organisation-wide posts ──
+                      if (_selectedVisibility == 'organization' &&
+                          _contentController.text.trim().isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildVisibilityWarning(),
                       ],
 
                       const SizedBox(height: 28),
@@ -619,35 +683,97 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFFFCC02)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded,
-              color: Color(0xFFF9A825), size: 20),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  color: Color(0xFFF9A825), size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'This post may identify a service user',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFF57F17),
+                      ),
+                    ),
+                    if (_gdprIssues.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _gdprIssues.join(', '),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFE65100),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Please remove any names, locations, or specific details. '
+            'Remember: Share what YOU did, not details about the person.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF92400E),
+              height: 1.4,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'This post will require manager approval.',
+            style: TextStyle(
+              fontSize: 11,
+              color: Color(0xFFB45309),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTooShortHint() {
+    final current = _contentController.text.trim().length;
+    final remaining = AppConstants.minPostLength - current;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFFB74D)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFA726),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.short_text, color: Colors.white, size: 14),
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Content may contain sensitive info',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFF57F17),
-                  ),
-                ),
-                if (_gdprIssues.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    _gdprIssues.join(', '),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFE65100),
-                    ),
-                  ),
-                ],
-              ],
+            child: Text(
+              'Post too short — $remaining more character${remaining == 1 ? '' : 's'} needed ($current/${AppConstants.minPostLength})',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFF57C00),
+              ),
             ),
           ),
         ],
@@ -696,16 +822,117 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 20),
-          const SizedBox(width: 12),
-          Expanded(
+          Row(
+            children: [
+              const Icon(Icons.error_outline,
+                  color: Color(0xFFEF4444), size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Contains personal data:\n• ${_gdprIssues.join('\n• ')}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'This post may contain information that could identify a service user. '
+            'Please edit to remove any names, locations, or specific details. '
+            'Remember: Share what YOU did, not details about the person.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF991B1B),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGdprSuggestions() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F4FF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF0A2C6B).withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_fix_high,
+                  size: 16, color: const Color(0xFF0A2C6B)),
+              const SizedBox(width: 8),
+              const Text(
+                'Anonymisation suggestions:',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0A2C6B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ..._gdprSuggestions.map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('  \u2022 ',
+                        style: TextStyle(
+                            fontSize: 12, color: Color(0xFF374151))),
+                    Expanded(
+                      child: Text(
+                        s,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF374151),
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVisibilityWarning() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFED7AA)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.visibility_outlined,
+              size: 18, color: const Color(0xFFEA580C)),
+          const SizedBox(width: 10),
+          const Expanded(
             child: Text(
-              'Contains personal data:\n• ${_gdprIssues.join('\n• ')}',
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFFEF4444),
+              'Organisation-wide posts are visible to all staff. '
+              'Extra care is needed to ensure no service user '
+              'can be identified.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF9A3412),
+                height: 1.4,
               ),
             ),
           ),

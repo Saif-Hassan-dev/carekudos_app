@@ -19,8 +19,10 @@ import '../features/settings/account_settings_screen.dart';
 import '../features/settings/privacy_gdpr_screen.dart';
 import '../features/settings/settings_notifications_screen.dart';
 import '../features/settings/help_support_screen.dart';
+import '../features/settings/gdpr_guidelines_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 import '../features/manager/select_core_values_screen.dart';
+import '../features/manager/screens/audit_log_screen.dart';
 import '../core/auth/auth_provider.dart';
 import '../core/auth/permissions_provider.dart';
 import '../core/services/storage_service.dart';
@@ -100,6 +102,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             state.matchedLocation.startsWith('/user-profile/') ||
             state.matchedLocation.startsWith('/settings') ||
             state.matchedLocation == '/gdpr-training' ||
+            state.matchedLocation == '/gdpr-guidelines' ||
+            state.matchedLocation == '/audit-log' ||
             state.matchedLocation == '/select-core-values')) {
           return hasSeenOnboarding ? '/login' : '/welcome';
         }
@@ -207,6 +211,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/gdpr-guidelines',
+        builder: (context, state) => const GdprGuidelinesScreen(),
+      ),
+      GoRoute(
+        path: '/audit-log',
+        builder: (context, state) => const AuditLogScreen(),
       ),
     ],
   );

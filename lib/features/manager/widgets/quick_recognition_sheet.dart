@@ -4,19 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/utils/constants.dart';
 
-/// Star tier model for the Quick Recognition sheet.
-class _StarTier {
-  final String label;
-  final int starCount;
-  final int points;
-
-  const _StarTier({
-    required this.label,
-    required this.starCount,
-    required this.points,
-  });
-}
-
 /// Staff member search result model.
 class _StaffResult {
   final String uid;
@@ -79,13 +66,10 @@ class QuickRecognitionSheet extends StatefulWidget {
 }
 
 class _QuickRecognitionSheetState extends State<QuickRecognitionSheet> {
-  static const _starTiers = [
-    _StarTier(label: '1 Star', starCount: 1, points: 1),
-    _StarTier(label: '3 Stars', starCount: 3, points: 3),
-    _StarTier(label: '5 Stars', starCount: 5, points: 5),
-  ];
+  // Manager recognition is always 3 stars — no tier selection needed
+  static const int _managerStarPoints = 3;
+  static const int _managerStarCount = 3;
 
-  int _selectedTierIndex = 1; // default to 3 stars
   final _commentController = TextEditingController();
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
@@ -201,7 +185,7 @@ class _QuickRecognitionSheetState extends State<QuickRecognitionSheet> {
     widget.onSend(
       _selectedStaff!.uid,
       _selectedStaff!.name,
-      _starTiers[_selectedTierIndex].points,
+      _managerStarPoints,
       comment,
     );
 
@@ -415,9 +399,9 @@ class _QuickRecognitionSheetState extends State<QuickRecognitionSheet> {
 
               const SizedBox(height: 24),
 
-              // ── Star selection ──
+              // ── Star info badge (fixed 3-star Manager recognition) ──
               const Text(
-                'Select Stars',
+                'Recognition Stars',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -425,95 +409,66 @@ class _QuickRecognitionSheetState extends State<QuickRecognitionSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              ...List.generate(_starTiers.length, (i) {
-                final tier = _starTiers[i];
-                final isSelected = _selectedTierIndex == i;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedTierIndex = i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFFF0F4FF)
-                            : const Color(0xFFF8F8F8),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF0A2C6B)
-                              : const Color(0xFFF0F0F0),
-                          width: isSelected ? 1.5 : 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          // Label
-                          Text(
-                            tier.label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected
-                                  ? const Color(0xFF0A2C6B)
-                                  : const Color(0xFF1A1A2E),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Stars
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: List.generate(
-                              tier.starCount,
-                              (_) => const Padding(
-                                padding: EdgeInsets.only(right: 2),
-                                child: Icon(
-                                  Icons.star_rounded,
-                                  color: Color(0xFFD4AF37),
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          // Points text
-                          Text(
-                            '${tier.points} point${tier.points > 1 ? 's' : ''}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isSelected
-                                  ? FontWeight.w500
-                                  : FontWeight.w400,
-                              color: isSelected
-                                  ? const Color(0xFF0A2C6B)
-                                  : const Color(0xFF8E8E93),
-                            ),
-                          ),
-                          // Checkmark
-                          if (isSelected) ...[
-                            const SizedBox(width: 10),
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF00BCD4),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.check,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                            ),
-                          ],
-                        ],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F4FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: const Color(0xFF0A2C6B), width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Manager Star',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0A2C6B),
                       ),
                     ),
-                  ),
-                );
-              }),
+                    const SizedBox(width: 12),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(
+                        _managerStarCount,
+                        (_) => const Padding(
+                          padding: EdgeInsets.only(right: 2),
+                          child: Icon(
+                            Icons.star_rounded,
+                            color: Color(0xFFD4AF37),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    const Text(
+                      '3 points',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF0A2C6B),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF00BCD4),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 20),
 
