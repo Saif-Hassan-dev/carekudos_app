@@ -195,7 +195,14 @@ class AppButton extends StatelessWidget {
       children.add(AppSpacing.horizontalGap8);
     }
     
-    children.add(Text(text, style: _getTextStyle().copyWith(color: color)));
+    children.add(Flexible(
+      child: Text(
+        text,
+        style: _getTextStyle().copyWith(color: color),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+      ),
+    ));
     
     if (trailingIcon != null) {
       children.add(AppSpacing.horizontalGap8);
@@ -331,9 +338,17 @@ class QuizActionButton extends StatelessWidget {
           width: 100,
           height: 100,
           alignment: Alignment.center,
-          child: Text(
-            text,
-            style: AppTypography.headingH4.copyWith(color: textColor),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                text,
+                style: AppTypography.headingH4.copyWith(color: textColor),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+              ),
+            ),
           ),
         ),
       ),

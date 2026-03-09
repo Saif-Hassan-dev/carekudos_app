@@ -126,26 +126,29 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Continue',
-                        style: AppTypography.actionA1.copyWith(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Continue',
+                          style: AppTypography.actionA1.copyWith(
+                            color: hasSelection
+                                ? Colors.white
+                                : const Color(0xFFBDBDBD),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.arrow_forward,
+                          size: 18,
                           color: hasSelection
                               ? Colors.white
                               : const Color(0xFFBDBDBD),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Icon(
-                        Icons.arrow_forward,
-                        size: 18,
-                        color: hasSelection
-                            ? Colors.white
-                            : const Color(0xFFBDBDBD),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

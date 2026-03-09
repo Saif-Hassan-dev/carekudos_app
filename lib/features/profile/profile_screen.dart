@@ -431,7 +431,13 @@ class ProfileScreen extends ConsumerWidget {
                           }
 
                           // Sort posts by createdAt in descending order
-                          final posts = snapshot.data!.docs.toList();
+                          // Only show active, non-deleted posts
+                          final posts = snapshot.data!.docs.where((doc) {
+                            final d = doc.data() as Map<String, dynamic>;
+                            final isActive = d['isActive'] as bool? ?? true;
+                            final isDeleted = d['isDeleted'] as bool? ?? false;
+                            return isActive && !isDeleted;
+                          }).toList();
                           posts.sort((a, b) {
                             final aData = a.data() as Map<String, dynamic>;
                             final bData = b.data() as Map<String, dynamic>;
@@ -462,6 +468,9 @@ class ProfileScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
+                // Deactivated Posts Section
+                _DeactivatedPostsSection(uid: profile.uid),
                 const SizedBox(height: 100),
               ],
             ),
@@ -830,5 +839,269 @@ class ProfileScreen extends ConsumerWidget {
             ? '${word[0].toUpperCase()}${word.substring(1)}'
             : '')
         .join(' ');
+  }
+}
+
+/// Section that shows deactivated posts and allows the user to reactivate them.
+class _DeactivatedPostsSection extends StatelessWidget {
+  final String uid;
+
+  const _DeactivatedPostsSection({required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .where('authorId', isEqualTo: uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final deactivatedPosts = snapshot.data!.docs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final isActive = data['isActive'] as bool? ?? true;
+          final isDeleted = data['isDeleted'] as bool? ?? false;
+          return !isActive && !isDeleted;
+        }).toList();
+
+        if (deactivatedPosts.isEmpty) return const SizedBox.shrink();
+
+        // Sort by createdAt descending
+        deactivatedPosts.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aTime = aData['createdAt'] as Timestamp?;
+          final bTime = bData['createdAt'] as Timestamp?;
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+          return bTime.compareTo(aTime);
+        });
+
+        return Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.visibility_off,
+                      color: Color(0xFFF57C00), size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Deactivated Posts',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF212121),
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${deactivatedPosts.length}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFF57C00),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'These posts are hidden from the feed. You can reactivate them at any time.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF9E9E9E),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...deactivatedPosts.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return _DeactivatedPostCard(
+                  postId: doc.id,
+                  content: data['content'] ?? '',
+                  category: data['category'] ?? 'General',
+                  stars: data['stars'] ?? 0,
+                  createdAt: data['createdAt'] != null
+                      ? (data['createdAt'] as Timestamp).toDate()
+                      : DateTime.now(),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DeactivatedPostCard extends StatefulWidget {
+  final String postId;
+  final String content;
+  final String category;
+  final int stars;
+  final DateTime createdAt;
+
+  const _DeactivatedPostCard({
+    required this.postId,
+    required this.content,
+    required this.category,
+    required this.stars,
+    required this.createdAt,
+  });
+
+  @override
+  State<_DeactivatedPostCard> createState() => _DeactivatedPostCardState();
+}
+
+class _DeactivatedPostCardState extends State<_DeactivatedPostCard> {
+  bool _isReactivating = false;
+
+  Future<void> _reactivatePost() async {
+    setState(() => _isReactivating = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .doc(widget.postId)
+          .update({'isActive': true});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Post reactivated'),
+            backgroundColor: Color(0xFF4CAF50),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to reactivate: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isReactivating = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8F0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFE0B2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Category + time row
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE0B2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  widget.category,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFFE65100),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                Formatters.timeAgo(widget.createdAt),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF9E9E9E),
+                ),
+              ),
+              const Spacer(),
+              // Star count
+              Row(
+                children: [
+                  const Icon(Icons.star_rounded,
+                      color: Color(0xFFD4AF37), size: 16),
+                  const SizedBox(width: 2),
+                  Text(
+                    '${widget.stars}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF424242),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Content preview
+          Text(
+            widget.content,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF424242),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Reactivate button
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: _isReactivating ? null : _reactivatePost,
+              icon: _isReactivating
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.visibility, size: 16),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _isReactivating ? 'Reactivating...' : 'Reactivate Post',
+                  maxLines: 1,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0A2C6B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                textStyle: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

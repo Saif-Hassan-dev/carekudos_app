@@ -336,22 +336,25 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                       ),
                       const SizedBox(width: 14),
                       // Upload button
-                      ElevatedButton.icon(
-                        onPressed: _pickProfilePhoto,
-                        icon: const Icon(Icons.cloud_upload_outlined, size: 16),
-                        label: const Text('Upload Photo'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A2C6B),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 18, vertical: 10),
-                          textStyle: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: ElevatedButton.icon(
+                          onPressed: _pickProfilePhoto,
+                          icon: const Icon(Icons.cloud_upload_outlined, size: 16),
+                          label: const Text('Upload Photo',
+                              overflow: TextOverflow.ellipsis, maxLines: 1),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0A2C6B),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 18, vertical: 10),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),

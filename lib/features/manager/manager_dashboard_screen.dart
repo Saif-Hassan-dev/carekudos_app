@@ -607,21 +607,24 @@ class _ManagerDashboardScreenState
                 style: AppTypography.headingH4
                     .copyWith(fontWeight: FontWeight.w700)),
             const Spacer(),
-            ElevatedButton.icon(
-              onPressed: _openQuickRecognition,
-              icon: const Icon(Icons.star_rounded, size: 16),
-              label: const Text('Give Kudos Now'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD4AF37),
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+            Flexible(
+              child: ElevatedButton.icon(
+                onPressed: _openQuickRecognition,
+                icon: const Icon(Icons.star_rounded, size: 16),
+                label: const Text('Give Kudos Now',
+                    overflow: TextOverflow.ellipsis, maxLines: 1),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD4AF37),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  textStyle: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                  elevation: 2,
                 ),
-                textStyle: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600),
-                elevation: 2,
               ),
             ),
           ],
@@ -892,22 +895,25 @@ class _ManagerDashboardScreenState
                                     height: 1.3)),
                           ),
                           const SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            onPressed: () => _giveManagerStar(gap.uid, gap.name),
-                            icon: const Icon(Icons.star_rounded, size: 16),
-                            label: const Text('Give Kudos'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0A2C6B),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 10),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
+                          Flexible(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _giveManagerStar(gap.uid, gap.name),
+                              icon: const Icon(Icons.star_rounded, size: 16),
+                              label: const Text('Give Kudos',
+                                  overflow: TextOverflow.ellipsis, maxLines: 1),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0A2C6B),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                textStyle: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600),
+                                elevation: 0,
                               ),
-                              textStyle: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600),
-                              elevation: 0,
                             ),
                           ),
                         ],
@@ -1376,7 +1382,7 @@ class _ReviewCard extends StatelessWidget {
           if (post.hasGdprFlag) ...[
             SizedBox(
               width: double.infinity,
-              height: 38,
+              height: 44,
               child: OutlinedButton.icon(
                 onPressed: () async {
                   final reason = await _showReasonDialog(
@@ -1411,11 +1417,13 @@ class _ReviewCard extends StatelessWidget {
                 },
                 icon: const Icon(Icons.edit_outlined, size: 15),
                 label: const Text('Request Edits',
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFEA580C),
                   side: const BorderSide(color: Color(0xFFFED7AA)),
-                  padding: EdgeInsets.zero,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -1429,7 +1437,7 @@ class _ReviewCard extends StatelessWidget {
               // Reject button
               Expanded(
                 child: SizedBox(
-                  height: 42,
+                  height: 48,
                   child: OutlinedButton(
                     onPressed: () async {
                       final reason = await _showReasonDialog(
@@ -1484,7 +1492,7 @@ class _ReviewCard extends StatelessWidget {
               // Approve button
               Expanded(
                 child: SizedBox(
-                  height: 56,
+                  height: 48,
                   child: ElevatedButton(
                     onPressed: () async {
                       try {

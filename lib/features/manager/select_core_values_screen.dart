@@ -359,23 +359,26 @@ class _SelectCoreValuesScreenState
           ),
         ),
         const SizedBox(width: 10),
-        SizedBox(
-          height: 56,
-          child: ElevatedButton.icon(
-            onPressed: _addCustom,
-            icon: const Icon(Icons.add_circle_outline, size: 18),
-            label: const Text('Add'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A2C6B),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+        Flexible(
+          child: SizedBox(
+            height: 56,
+            child: ElevatedButton.icon(
+              onPressed: _addCustom,
+              icon: const Icon(Icons.add_circle_outline, size: 18),
+              label: const Text('Add',
+                  overflow: TextOverflow.ellipsis, maxLines: 1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0A2C6B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
