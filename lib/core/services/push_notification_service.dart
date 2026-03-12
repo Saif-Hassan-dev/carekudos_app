@@ -1,41 +1,39 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
-/// Service that handles push notifications using Firebase Cloud Messaging.
-///
-/// This service manages:
-/// - Requesting notification permissions
-/// - Saving / refreshing the FCM device token
-/// - Handling foreground & background messages
-/// - Subscribing to topics for broadcast notifications
-///
-/// NOTE: firebase_messaging is NOT yet added to pubspec.yaml.
-/// To enable real push notifications, add `firebase_messaging: ^14.7.0`
-/// to dependencies, then uncomment the FCM-specific lines below.
+/// Background message handler — must be a top-level function.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('[FCM] Background message: ${message.notification?.title}');
+}
+
 class PushNotificationService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
   //  Initialization
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
 
-  /// Call once at app startup (e.g. in main.dart after Firebase.initializeApp).
   static Future<void> init(String userId) async {
     try {
-      // 1. Request permission (iOS / Web)
+      // Skip FCM on web (not needed for mobile push)
+      if (kIsWeb) return;
+
       await _requestPermission();
 
-      // 2. Get FCM token and save to Firestore
       final token = await _getFcmToken();
       if (token != null) {
         await _saveDeviceToken(userId, token);
       }
 
-      // 3. Listen for token refresh
       _listenForTokenRefresh(userId);
-
-      // 4. Configure foreground message handling
       _configureForegroundMessages();
+
+      // Subscribe to broadcast topics
+      await subscribeToTopic('announcements');
+      await subscribeToTopic('all_users');
 
       debugPrint('[PushNotificationService] Initialized for user $userId');
     } catch (e) {
@@ -43,35 +41,34 @@ class PushNotificationService {
     }
   }
 
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
   //  Permission
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
 
   static Future<void> _requestPermission() async {
-    // When firebase_messaging is added, uncomment:
-    // final messaging = FirebaseMessaging.instance;
-    // final settings = await messaging.requestPermission(
-    //   alert: true,
-    //   announcement: false,
-    //   badge: true,
-    //   carPlay: false,
-    //   criticalAlert: false,
-    //   provisional: false,
-    //   sound: true,
-    // );
-    // debugPrint('Notification authorization: ${settings.authorizationStatus}');
-    debugPrint('[PushNotificationService] Permission request placeholder');
+    final settings = await _messaging.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+    debugPrint('[FCM] Authorization: ${settings.authorizationStatus}');
   }
 
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
   //  Token Management
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
 
   static Future<String?> _getFcmToken() async {
-    // When firebase_messaging is added, uncomment:
-    // return await FirebaseMessaging.instance.getToken();
-    debugPrint('[PushNotificationService] FCM token placeholder');
-    return null;
+    try {
+      return await _messaging.getToken();
+    } catch (e) {
+      debugPrint('[FCM] getToken error: $e');
+      return null;
+    }
   }
 
   static Future<void> _saveDeviceToken(String userId, String token) async {
@@ -80,8 +77,7 @@ class PushNotificationService {
         'fcmTokens': FieldValue.arrayUnion([token]),
         'lastTokenRefresh': FieldValue.serverTimestamp(),
       });
-    } catch (e) {
-      // If the field doesn't exist, set it
+    } catch (_) {
       await _db.collection('users').doc(userId).set({
         'fcmTokens': [token],
         'lastTokenRefresh': FieldValue.serverTimestamp(),
@@ -90,67 +86,70 @@ class PushNotificationService {
   }
 
   static void _listenForTokenRefresh(String userId) {
-    // When firebase_messaging is added, uncomment:
-    // FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-    //   _saveDeviceToken(userId, newToken);
-    // });
+    _messaging.onTokenRefresh.listen((newToken) {
+      _saveDeviceToken(userId, newToken);
+    });
   }
 
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
   //  Message Handling
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
 
   static void _configureForegroundMessages() {
-    // When firebase_messaging is added, uncomment:
-    // FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    //   debugPrint('Foreground message: ${message.notification?.title}');
-    //   // Show local notification or in-app banner
-    // });
+    // Show heads-up notifications while app is in foreground
+    FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint('[FCM] Foreground message: ${message.notification?.title}');
+    });
   }
 
-  /// Call this to handle a notification tap when the app opens from background.
   static Future<void> handleInitialMessage() async {
-    // When firebase_messaging is added, uncomment:
-    // final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-    // if (initialMessage != null) {
-    //   _handleMessage(initialMessage);
-    // }
-    // FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+    if (kIsWeb) return;
+    final initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleMessage(initialMessage);
+    }
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
   }
 
-  // static void _handleMessage(RemoteMessage message) {
-  //   final data = message.data;
-  //   final type = data['type'];
-  //   final postId = data['postId'];
-  //   // Navigate to relevant screen based on type
-  //   debugPrint('Notification tapped: type=$type, postId=$postId');
-  // }
+  static void _handleMessage(RemoteMessage message) {
+    final type = message.data['type'];
+    debugPrint('[FCM] Notification tapped: type=$type');
+    // Navigation logic can be added here
+  }
 
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
   //  Topics
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
 
-  /// Subscribe to a topic (e.g. organization-wide announcements)
   static Future<void> subscribeToTopic(String topic) async {
-    // When firebase_messaging is added, uncomment:
-    // await FirebaseMessaging.instance.subscribeToTopic(topic);
-    debugPrint('[PushNotificationService] Subscribed to $topic (placeholder)');
+    if (kIsWeb) return;
+    try {
+      await _messaging.subscribeToTopic(topic);
+      debugPrint('[FCM] Subscribed to topic: $topic');
+    } catch (e) {
+      debugPrint('[FCM] subscribeToTopic error: $e');
+    }
   }
 
-  /// Unsubscribe from a topic
   static Future<void> unsubscribeFromTopic(String topic) async {
-    // When firebase_messaging is added, uncomment:
-    // await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
-    debugPrint('[PushNotificationService] Unsubscribed from $topic (placeholder)');
+    if (kIsWeb) return;
+    try {
+      await _messaging.unsubscribeFromTopic(topic);
+    } catch (e) {
+      debugPrint('[FCM] unsubscribeFromTopic error: $e');
+    }
   }
 
-  // ──────────────────────────────────────
-  //  Sending (via Firestore trigger / Cloud Function)
-  // ──────────────────────────────────────
+  // ─────────────────────────────────────
+  //  Queue Push (processed by Cloud Function)
+  // ─────────────────────────────────────
 
-  /// Queue a push notification to be sent by a Cloud Function.
-  /// This writes to a `push_notifications` collection, which a
-  /// Cloud Function can watch and send real FCM messages.
   static Future<void> sendPushNotification({
     required String recipientId,
     required String title,
@@ -167,11 +166,10 @@ class PushNotificationService {
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      debugPrint('[PushNotificationService] Failed to queue push: $e');
+      debugPrint('[FCM] Failed to queue push: $e');
     }
   }
 
-  /// Send push notification when a star is received
   static Future<void> pushStarReceived({
     required String recipientId,
     required String giverName,
@@ -181,21 +179,44 @@ class PushNotificationService {
     final starText = points > 1 ? '$points stars' : 'a star';
     await sendPushNotification(
       recipientId: recipientId,
-      title: 'New Star Received!',
+      title: 'New Star Received! ⭐',
       body: '$giverName gave you $starText',
-      data: {
-        'type': 'star',
-        'postId': postId,
-      },
+      data: {'type': 'star', 'postId': postId},
     );
   }
 
-  // ──────────────────────────────────────
-  //  Cleanup
-  // ──────────────────────────────────────
+  static Future<void> pushPostApproved({
+    required String recipientId,
+    required String approverName,
+    required String postId,
+  }) async {
+    await sendPushNotification(
+      recipientId: recipientId,
+      title: 'Your post was approved ✅',
+      body: '$approverName approved your recognition post',
+      data: {'type': 'post_approved', 'postId': postId},
+    );
+  }
 
-  /// Remove the current device token when user logs out
+  static Future<void> pushPostRejected({
+    required String recipientId,
+    required String reason,
+    required String postId,
+  }) async {
+    await sendPushNotification(
+      recipientId: recipientId,
+      title: 'Post needs revision',
+      body: reason.isNotEmpty ? reason : 'Your post was rejected',
+      data: {'type': 'post_rejected', 'postId': postId},
+    );
+  }
+
+  // ─────────────────────────────────────
+  //  Cleanup
+  // ─────────────────────────────────────
+
   static Future<void> removeDeviceToken(String userId) async {
+    if (kIsWeb) return;
     try {
       final token = await _getFcmToken();
       if (token != null) {
@@ -203,8 +224,10 @@ class PushNotificationService {
           'fcmTokens': FieldValue.arrayRemove([token]),
         });
       }
+      await unsubscribeFromTopic('announcements');
+      await unsubscribeFromTopic('all_users');
     } catch (e) {
-      debugPrint('[PushNotificationService] Failed to remove token: $e');
+      debugPrint('[FCM] removeDeviceToken error: $e');
     }
   }
 }

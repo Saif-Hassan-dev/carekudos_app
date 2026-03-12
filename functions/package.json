@@ -1,0 +1,22 @@
+{
+  "name": "carekudos-functions",
+  "description": "CareKudos Firebase Cloud Functions",
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.37",
+    "typescript": "^5.9.3"
+  },
+  "private": true
+}

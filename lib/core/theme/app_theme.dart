@@ -69,6 +69,8 @@ class AppTheme {
           foregroundColor: AppColors.neutral0,
           disabledBackgroundColor: AppColors.neutral300,
           disabledForegroundColor: AppColors.neutral500,
+          surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.transparent,
           textStyle: AppTypography.actionA1,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.space24,
@@ -77,12 +79,14 @@ class AppTheme {
           shape: AppRadius.shapeLg,
           elevation: 0,
           minimumSize: const Size(0, 56),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
-      
+
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
+          surfaceTintColor: Colors.transparent,
           textStyle: AppTypography.actionA1,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.space24,
@@ -91,17 +95,20 @@ class AppTheme {
           shape: AppRadius.shapeLg,
           side: const BorderSide(color: AppColors.primary, width: 1.5),
           minimumSize: const Size(0, 56),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
-      
+
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
+          surfaceTintColor: Colors.transparent,
           textStyle: AppTypography.actionA2,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.space16,
             vertical: AppSpacing.space8,
           ),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
       

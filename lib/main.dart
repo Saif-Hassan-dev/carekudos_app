@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'app/app.dart';
 import 'core/services/storage_service.dart';
@@ -12,6 +13,9 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await StorageService.init();
+
+  // Register background message handler BEFORE any other Firebase calls
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // Initialize push notifications if user is already logged in
   final currentUser = FirebaseAuth.instance.currentUser;

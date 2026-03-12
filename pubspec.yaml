@@ -45,10 +45,11 @@ dependencies:
   # Routing
   go_router: ^13.2.0
 
-  # Firebase (ready, even if not used yet)
+  # Firebase
   firebase_core: ^2.27.0
   firebase_auth: ^4.17.0
   cloud_firestore: ^4.15.0
+  firebase_messaging: ^14.7.9
 
   # Local storage
   shared_preferences: ^2.2.2

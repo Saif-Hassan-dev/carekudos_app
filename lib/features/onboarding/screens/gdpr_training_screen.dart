@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/theme.dart';
@@ -17,8 +18,10 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
   bool? _selectedAnswer;
   bool _showFeedback = false;
   bool _isCorrect = false;
+  bool _loadingQuestions = true;
 
-  final List<Map<String, dynamic>> quizQuestions = [
+  // ── Hardcoded fallback questions (used if Firestore is empty) ──
+  final List<Map<String, dynamic>> _fallbackQuestions = [
     {
       'question': 'Should you avoid sharing a patient\'s name in a recognition post?',
       'correctAnswer': true,
@@ -50,6 +53,45 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
       'incorrectMessage': 'That\'s not right. Photos are personal data under GDPR. Sharing identifiable images without written, informed consent is a breach — regardless of intent. Always obtain documented consent before taking or posting photos.',
     },
   ];
+
+  // ── Active questions (Firestore or fallback) ──
+  List<Map<String, dynamic>> _activeQuestions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuestions();
+  }
+
+  Future<void> _loadQuestions() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('quizzes')
+          .where('category', isEqualTo: 'GDPR')
+          .orderBy('order')
+          .get();
+      if (snap.docs.isNotEmpty) {
+        final questions = snap.docs.map((doc) {
+          final d = doc.data();
+          return {
+            'question': d['question'] as String? ?? '',
+            'correctAnswer': d['correctAnswer'] as bool? ?? true,
+            'correctMessage': d['correctMessage'] as String? ?? '',
+            'incorrectMessage': d['incorrectMessage'] as String? ?? '',
+          };
+        }).toList();
+        if (mounted) setState(() { _activeQuestions = questions; _loadingQuestions = false; });
+        return;
+      }
+    } catch (e) {
+      debugPrint('Failed to load quiz from Firestore: $e');
+    }
+    // Fallback to hardcoded
+    if (mounted) setState(() { _activeQuestions = _fallbackQuestions; _loadingQuestions = false; });
+  }
+
+  List<Map<String, dynamic>> get quizQuestions =>
+      _activeQuestions.isEmpty ? _fallbackQuestions : _activeQuestions;
 
   Future<void> _completeTrainingAndContinue() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -93,6 +135,9 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadingQuestions) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final currentQuestion = quizQuestions[_currentQuestionIndex];
     final questionText = currentQuestion['question'] as String;
     final canContinue = _showFeedback; // Allow continue after any answer (learning-focused)

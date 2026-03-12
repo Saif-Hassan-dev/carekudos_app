@@ -22,6 +22,7 @@ import '../../core/widgets/app_bottom_nav.dart';
 import '../../core/widgets/app_logo.dart';
 import '../../core/providers/notification_provider.dart';
 import '../../core/providers/user_photo_provider.dart';
+import '../../core/providers/announcements_provider.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/push_notification_service.dart';
 import 'widgets/app_hero_section.dart';
@@ -38,6 +39,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   bool _showSuccessBanner = false;
   bool _showStarGivenBanner = false;
   bool _showHeroSection = true;
+  String? _dismissedAnnouncementId;
 
   void _onNavTap(int index) {
     if (index == 1) {
@@ -140,6 +142,66 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                   ],
                 ),
               ),
+
+              // ── Announcement Banner ──
+              Builder(builder: (context) {
+                final announcement =
+                    ref.watch(latestAnnouncementProvider).valueOrNull;
+                if (announcement == null) return const SizedBox.shrink();
+                if (announcement.id == _dismissedAnnouncementId) {
+                  return const SizedBox.shrink();
+                }
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFF59E0B)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.campaign_rounded,
+                          color: Color(0xFFF59E0B), size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              announcement.title,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF92400E),
+                              ),
+                            ),
+                            if (announcement.message.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                announcement.message,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF92400E),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() =>
+                            _dismissedAnnouncementId = announcement.id),
+                        child: const Icon(Icons.close,
+                            size: 16, color: Color(0xFF92400E)),
+                      ),
+                    ],
+                  ),
+                );
+              }),
 
               // ── Success Banner ──
               if (_showSuccessBanner)

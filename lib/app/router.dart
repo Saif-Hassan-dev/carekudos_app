@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/welcome_screen.dart';
@@ -23,6 +24,8 @@ import '../features/settings/gdpr_guidelines_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 import '../features/manager/select_core_values_screen.dart';
 import '../features/manager/screens/audit_log_screen.dart';
+import '../features/training/training_library_screen.dart';
+import '../features/admin/admin_login_screen.dart';
 import '../core/auth/auth_provider.dart';
 import '../core/auth/permissions_provider.dart';
 import '../core/services/storage_service.dart';
@@ -36,6 +39,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) async {
       // Don't redirect away from splash
       if (state.matchedLocation == '/splash') return null;
+
+      // Admin routes bypass regular app auth flow
+      if (state.matchedLocation.startsWith('/admin')) return null;
 
       final user = ref.read(authStateProvider).value;
       final isLoggedIn = user != null;
@@ -219,6 +225,31 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/audit-log',
         builder: (context, state) => const AuditLogScreen(),
+      ),
+      GoRoute(
+        path: '/training',
+        builder: (context, state) => const TrainingLibraryScreen(),
+      ),
+      // ── Admin Web Dashboard Routes ──
+      GoRoute(
+        path: '/admin',
+        redirect: (context, state) {
+          if (state.matchedLocation == '/admin') return '/admin/login';
+          return null;
+        },
+        builder: (context, state) => const AdminLoginScreen(),
+        routes: [
+          GoRoute(
+            path: 'login',
+            builder: (context, state) => const AdminLoginScreen(),
+          ),
+          GoRoute(
+            path: 'dashboard',
+            builder: (context, state) => const Scaffold(
+              body: Center(child: Text('Admin Dashboard — Coming Soon')),
+            ),
+          ),
+        ],
       ),
     ],
   );

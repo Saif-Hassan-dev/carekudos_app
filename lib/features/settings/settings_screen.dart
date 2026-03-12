@@ -64,6 +64,14 @@ class SettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _SettingsCard(
                     iconPath:
+                        'assets/icons/CareKudos (13)/vuesax/twotone/shield-security.png',
+                    title: 'Training Library',
+                    subtitle: 'Access your training modules',
+                    onTap: () => context.push('/training'),
+                  ),
+                  const SizedBox(height: 12),
+                  _SettingsCard(
+                    iconPath:
                         'assets/icons/CareKudos (16)/vuesax/twotone/notification.png',
                     title: 'Notifications',
                     subtitle: 'Manage notification preferences',
