@@ -121,8 +121,14 @@ class _GiveStarBottomSheetState extends State<GiveStarBottomSheet> {
             : _noteController.text.trim(),
       );
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
-      if (mounted) setState(() => _isSubmitting = false);
+    } catch (e) {
+      debugPrint('[GiveStar] Failed to give star: $e');
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to give star: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 

@@ -7,6 +7,7 @@ import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/widgets/app_logo.dart';
 import '../../core/auth/auth_notifier.dart';
+import '../../core/services/storage_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -37,14 +38,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           password: _passwordController.text,
         );
 
-    if (mounted) {
-      if (success) {
-        context.go('/feed');
-      } else {
-        final authState = ref.read(authNotifierProvider);
-        if (authState.error != null) {
-          context.showErrorSnackBar(authState.error!);
-        }
+    if (!mounted) return;
+
+    if (success) {
+      await StorageService.setOnboardingComplete(true);
+      if (mounted) context.go('/feed');
+    } else {
+      final authState = ref.read(authNotifierProvider);
+      if (authState.error != null) {
+        context.showErrorSnackBar(authState.error!);
       }
     }
   }

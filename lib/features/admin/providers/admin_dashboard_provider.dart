@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -153,33 +154,28 @@ final adminStatsProvider = FutureProvider<AdminStats>((ref) async {
   final now = DateTime.now();
   final startOfDay = DateTime(now.year, now.month, now.day);
 
-  // Fetch users + posts in parallel
+  // Fetch users + pending posts + today's posts in parallel (server-side filtered)
   final results = await Future.wait([
     _firestore.collection(AppConstants.usersCollection).get(),
-    _firestore.collection(AppConstants.postsCollection).get(),
+    _firestore.collection(AppConstants.postsCollection)
+        .where('approvalStatus', isEqualTo: 'pending').get(),
+    _firestore.collection(AppConstants.postsCollection)
+        .where('createdAt', isGreaterThan: Timestamp.fromDate(startOfDay)).get(),
   ]);
 
   final usersSnap = results[0];
-  final postsSnap = results[1];
+  final pendingSnap = results[1];
+  final todaySnap = results[2];
 
   final totalUsers = usersSnap.docs.length;
 
+  int pendingActions = pendingSnap.docs.length;
+
   // Active today = unique authors with posts today
   final activeIds = <String>{};
-  int pendingActions = 0;
-
-  for (final doc in postsSnap.docs) {
-    final data = doc.data();
-    final createdAt = data['createdAt'] != null
-        ? (data['createdAt'] as Timestamp).toDate()
-        : null;
-
-    if (data['approvalStatus'] == 'pending') pendingActions++;
-
-    if (createdAt != null && createdAt.isAfter(startOfDay)) {
-      final authorId = data['authorId'] as String?;
-      if (authorId != null) activeIds.add(authorId);
-    }
+  for (final doc in todaySnap.docs) {
+    final authorId = doc.data()['authorId'] as String?;
+    if (authorId != null) activeIds.add(authorId);
   }
 
   // Compliance alerts = users with gdprConsentGiven == false OR gdprTrainingCompleted == false
@@ -193,7 +189,7 @@ final adminStatsProvider = FutureProvider<AdminStats>((ref) async {
 
   return AdminStats(
     totalUsers: totalUsers,
-    activeToday: activeIds.isEmpty ? totalUsers : activeIds.length,
+    activeToday: activeIds.length,
     pendingActions: pendingActions,
     complianceAlerts: complianceAlerts,
   );
@@ -1030,7 +1026,9 @@ final adminConsentLogsProvider =
         );
       }).toList();
     }
-  } catch (_) {}
+  } catch (e) {
+    debugPrint('[AdminProvider] consent_logs query failed: $e');
+  }
 
   // Fallback: derive from user consent statuses
   try {
@@ -1041,7 +1039,8 @@ final adminConsentLogsProvider =
         .get();
 
     return _mapUsersToConsentLogs(usersSnap.docs);
-  } catch (_) {
+  } catch (e) {
+    debugPrint('[AdminProvider] ordered users fallback failed: $e');
     final usersSnap = await _firestore
         .collection(AppConstants.usersCollection)
         .limit(10)
@@ -1463,3 +1462,159 @@ Future<void> updateTrainingModule(String id, Map<String, dynamic> data) async {
 Future<void> deleteTrainingModule(String id) async {
   await _firestore.collection('training_content').doc(id).delete();
 }
+
+// ═══════════════════════════════════════════════════════════════
+// DATE RANGE FILTER
+// ═══════════════════════════════════════════════════════════════
+
+final adminDateRangeProvider = StateProvider<DateTimeRange>((ref) {
+  final now = DateTime.now();
+  return DateTimeRange(
+    start: now.subtract(const Duration(days: 30)),
+    end: now,
+  );
+});
+
+/// Engagement chart filtered by date range
+final adminEngagementChartFilteredProvider =
+    FutureProvider<AdminEngagementChartData>((ref) async {
+  final range = ref.watch(adminDateRangeProvider);
+  final totalDays = range.end.difference(range.start).inDays;
+  final buckets = totalDays <= 14 ? totalDays : (totalDays <= 60 ? 10 : 12);
+  final bucketSize = totalDays ~/ buckets;
+
+  final days = List.generate(buckets, (i) {
+    final d = range.start.add(Duration(days: i * bucketSize));
+    return DateTime(d.year, d.month, d.day);
+  });
+
+  final snap =
+      await _firestore.collection(AppConstants.postsCollection).get();
+
+  final daily = List<double>.filled(buckets, 0);
+  final monthly = List<double>.filled(buckets, 0);
+
+  for (int i = 0; i < days.length; i++) {
+    final dayStart = days[i];
+    final dayEnd = i < days.length - 1
+        ? days[i + 1]
+        : range.end.add(const Duration(days: 1));
+    final mStart = DateTime(dayStart.year, dayStart.month, 1);
+    final dIds = <String>{};
+    final mIds = <String>{};
+
+    for (final doc in snap.docs) {
+      final d = doc.data();
+      final at = (d['createdAt'] as Timestamp?)?.toDate();
+      final uid = d['authorId'] as String?;
+      if (at == null || uid == null) continue;
+      if (!at.isBefore(dayStart) && at.isBefore(dayEnd)) dIds.add(uid);
+      if (!at.isBefore(mStart) && at.isBefore(dayEnd)) mIds.add(uid);
+    }
+
+    daily[i] = dIds.length.toDouble();
+    monthly[i] = mIds.length.toDouble();
+  }
+
+  final labels =
+      days.map((d) => '${_abbrMonth(d.month)} ${d.day}').toList();
+
+  return AdminEngagementChartData(
+      dailyActive: daily, monthlyActive: monthly, labels: labels);
+});
+
+/// Kudos chart filtered by date range
+final adminKudosChartFilteredProvider =
+    FutureProvider<AdminKudosChartData>((ref) async {
+  final range = ref.watch(adminDateRangeProvider);
+  // Build monthly buckets within the range
+  final mStarts = <DateTime>[];
+  var cursor = DateTime(range.start.year, range.start.month, 1);
+  final endMonth = DateTime(range.end.year, range.end.month + 1, 1);
+  while (cursor.isBefore(endMonth)) {
+    mStarts.add(cursor);
+    int m = cursor.month + 1;
+    int y = cursor.year;
+    if (m > 12) { m = 1; y += 1; }
+    cursor = DateTime(y, m, 1);
+  }
+  if (mStarts.isEmpty) mStarts.add(DateTime(range.start.year, range.start.month, 1));
+
+  final snap = await _firestore.collection('star_history').get();
+  final sent = List<double>.filled(mStarts.length, 0);
+
+  for (final doc in snap.docs) {
+    final d = doc.data();
+    final at = (d['createdAt'] as Timestamp?)?.toDate();
+    if (at == null) continue;
+    for (int i = 0; i < mStarts.length; i++) {
+      final start = mStarts[i];
+      final end = i < mStarts.length - 1
+          ? mStarts[i + 1]
+          : DateTime(mStarts.last.year, mStarts.last.month + 1, 1);
+      if (!at.isBefore(start) && at.isBefore(end)) {
+        sent[i]++;
+        break;
+      }
+    }
+  }
+
+  final received = sent.map((v) => (v * 0.75).roundToDouble()).toList();
+  final months = mStarts.map((d) => _abbrMonth(d.month)).toList();
+
+  return AdminKudosChartData(sent: sent, received: received, months: months);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// GDPR COMPLIANCE CHART DATA
+// ═══════════════════════════════════════════════════════════════
+
+class GdprComplianceChartData {
+  final int completed;
+  final int inProgress;  // consent given but training not done
+  final int nonCompliant; // neither consent nor training
+  final int totalUsers;
+
+  const GdprComplianceChartData({
+    this.completed = 0,
+    this.inProgress = 0,
+    this.nonCompliant = 0,
+    this.totalUsers = 0,
+  });
+
+  double get completedPercent => totalUsers == 0 ? 0 : completed / totalUsers * 100;
+  double get inProgressPercent => totalUsers == 0 ? 0 : inProgress / totalUsers * 100;
+  double get nonCompliantPercent => totalUsers == 0 ? 0 : nonCompliant / totalUsers * 100;
+}
+
+final adminGdprComplianceChartProvider =
+    FutureProvider<GdprComplianceChartData>((ref) async {
+  final snap =
+      await _firestore.collection(AppConstants.usersCollection).get();
+  final total = snap.docs.length;
+  if (total == 0) return const GdprComplianceChartData();
+
+  int completed = 0;
+  int inProgress = 0;
+  int nonCompliant = 0;
+
+  for (final doc in snap.docs) {
+    final d = doc.data();
+    final consent = d['gdprConsentGiven'] == true;
+    final trained = d['gdprTrainingCompleted'] == true;
+    if (consent && trained) {
+      completed++;
+    } else if (consent && !trained) {
+      inProgress++;
+    } else {
+      nonCompliant++;
+    }
+  }
+
+  return GdprComplianceChartData(
+    completed: completed,
+    inProgress: inProgress,
+    nonCompliant: nonCompliant,
+    totalUsers: total,
+  );
+});

@@ -256,19 +256,28 @@ class _AuditLogEntry extends StatelessWidget {
 
   _ActionInfo _actionDetails(String action) {
     switch (action) {
+      case 'activated':
       case 'approved':
         return _ActionInfo(
-          label: 'Approved',
-          icon: Icons.check_circle_outline,
+          label: 'Activated',
+          icon: Icons.toggle_on_outlined,
           iconColor: const Color(0xFF16A34A),
           bgColor: const Color(0xFFDCFCE7),
         );
+      case 'deactivated':
       case 'rejected':
         return _ActionInfo(
-          label: 'Rejected',
-          icon: Icons.cancel_outlined,
+          label: 'Deactivated',
+          icon: Icons.toggle_off_outlined,
           iconColor: const Color(0xFFDC2626),
           bgColor: const Color(0xFFFEF2F2),
+        );
+      case 'deleted':
+        return _ActionInfo(
+          label: 'Deleted',
+          icon: Icons.delete_outline,
+          iconColor: const Color(0xFF9D174D),
+          bgColor: const Color(0xFFFDF2F8),
         );
       case 'edit_requested':
         return _ActionInfo(

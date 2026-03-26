@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import '../../core/auth/auth_notifier.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/app_logo.dart';
+import '../../../core/utils/pdf_export.dart';
 import 'providers/admin_dashboard_provider.dart';
 
 /// Comma-format a number (e.g. 2547 → "2,547")
@@ -1935,7 +1936,17 @@ class _ReportsCard extends ConsumerWidget {
             subtitle: 'User activity & kudos metrics',
             buttonLabel: 'Export PDF',
             buttonColor: const Color(0xFF16A34A),
-            onExport: exportEngagement,
+            onExport: () {
+              PdfExport.exportEngagementReport(
+                users: (usersAsync.valueOrNull ?? []).map((u) => {
+                  'name': u.fullName,
+                  'role': u.displayRole,
+                  'org': u.organizationId ?? '',
+                  'status': u.statusLabel,
+                  'kudos': '${u.totalStars}',
+                }).toList(),
+              );
+            },
           ),
           const SizedBox(height: 16),
           _ReportItem(
@@ -5298,8 +5309,60 @@ class _AnalyticsContentState extends ConsumerState<_AnalyticsContent> {
   String _orgFilter = 'All Organisations';
   String _roleFilter = 'All Roles';
 
+  void _applyPeriodFilter(String period) {
+    final now = DateTime.now();
+    DateTimeRange range;
+    switch (period) {
+      case 'Last 7 Days':
+        range = DateTimeRange(start: now.subtract(const Duration(days: 7)), end: now);
+        break;
+      case 'Last 90 Days':
+        range = DateTimeRange(start: now.subtract(const Duration(days: 90)), end: now);
+        break;
+      case 'This Year':
+        range = DateTimeRange(start: DateTime(now.year, 1, 1), end: now);
+        break;
+      case 'Custom Range':
+        _pickCustomRange();
+        return;
+      default: // Last 30 Days
+        range = DateTimeRange(start: now.subtract(const Duration(days: 30)), end: now);
+    }
+    ref.read(adminDateRangeProvider.notifier).state = range;
+    setState(() => _periodFilter = period);
+  }
+
+  Future<void> _pickCustomRange() async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2023),
+      lastDate: now,
+      initialDateRange: ref.read(adminDateRangeProvider),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF1E3A8A),
+            onPrimary: Colors.white,
+            surface: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      ref.read(adminDateRangeProvider.notifier).state = picked;
+      setState(() => _periodFilter = 'Custom Range');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final dateRange = ref.watch(adminDateRangeProvider);
+    final rangeLabel = _periodFilter == 'Custom Range'
+        ? '${DateFormat('MMM d').format(dateRange.start)} – ${DateFormat('MMM d').format(dateRange.end)}'
+        : null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(28),
       child: Column(
@@ -5335,10 +5398,26 @@ class _AnalyticsContentState extends ConsumerState<_AnalyticsContent> {
                     'Last 30 Days',
                     'Last 90 Days',
                     'This Year',
+                    'Custom Range',
                   ],
-                  onChanged: (v) => setState(() => _periodFilter = v!),
+                  onChanged: (v) => _applyPeriodFilter(v!),
                 ),
               ),
+              if (rangeLabel != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(rangeLabel,
+                      style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF1E3A8A))),
+                ),
+              ],
               const SizedBox(width: 16),
               Expanded(
                 child: _UserMgmtDropdown(
@@ -5375,6 +5454,12 @@ class _AnalyticsContentState extends ConsumerState<_AnalyticsContent> {
           _AnalyticsSectionTitle(title: 'Engagement Analytics'),
           const SizedBox(height: 16),
           _EngagementChartsRow(isCompact: widget.isCompact),
+          const SizedBox(height: 28),
+
+          // ── GDPR Compliance Overview ──
+          _AnalyticsSectionTitle(title: 'GDPR Compliance Overview'),
+          const SizedBox(height: 16),
+          _GdprComplianceChartsRow(isCompact: widget.isCompact),
           const SizedBox(height: 28),
 
           // ── Training & Onboarding Analytics ──
@@ -5614,7 +5699,7 @@ class _DailyMonthlyLineChart extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chartAsync = ref.watch(adminEngagementChartProvider);
+    final chartAsync = ref.watch(adminEngagementChartFilteredProvider);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -5785,7 +5870,7 @@ class _KudosSentReceivedBarChart extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chartAsync = ref.watch(adminKudosChartProvider);
+    final chartAsync = ref.watch(adminKudosChartFilteredProvider);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -5841,7 +5926,25 @@ class _KudosSentReceivedBarChart extends ConsumerWidget {
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
         maxY: maxY,
-        barTouchData: BarTouchData(enabled: false),
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (_) => const Color(0xFF1E3A8A),
+            tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            tooltipBorderRadius: BorderRadius.circular(8),
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final label = rodIndex == 0 ? 'Sent' : 'Received';
+              return BarTooltipItem(
+                '$label: ${rod.toY.toInt()}',
+                GoogleFonts.inter(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              );
+            },
+          ),
+        ),
         titlesData: FlTitlesData(
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
@@ -6116,14 +6219,365 @@ class _TrainingProgressCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// REPORTS SECTION
+// GDPR COMPLIANCE CHARTS
 // ═══════════════════════════════════════════════════════════════
 
-class _ReportsSection extends StatelessWidget {
-  const _ReportsSection();
+class _GdprComplianceChartsRow extends ConsumerWidget {
+  final bool isCompact;
+  const _GdprComplianceChartsRow({required this.isCompact});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gdprAsync = ref.watch(adminGdprComplianceChartProvider);
+    return gdprAsync.when(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (e, _) => Text('Error: $e'),
+      data: (data) {
+        final pieChart = _GdprPieChart(data: data);
+        final barChart = _GdprBarChart(data: data);
+        if (isCompact) {
+          return Column(children: [
+            pieChart,
+            const SizedBox(height: 16),
+            barChart,
+          ]);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: pieChart),
+            const SizedBox(width: 16),
+            Expanded(child: barChart),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _GdprPieChart extends StatefulWidget {
+  final GdprComplianceChartData data;
+  const _GdprPieChart({required this.data});
+
+  @override
+  State<_GdprPieChart> createState() => _GdprPieChartState();
+}
+
+class _GdprPieChartState extends State<_GdprPieChart> {
+  int _touchedIndex = -1;
 
   @override
   Widget build(BuildContext context) {
+    final data = widget.data;
+    final labels = ['Compliant', 'In Progress', 'Non-Compliant'];
+    final colors = [const Color(0xFF16A34A), const Color(0xFFF59E0B), const Color(0xFFDC2626)];
+    final values = [data.completed, data.inProgress, data.nonCompliant];
+    final percents = [data.completedPercent, data.inProgressPercent, data.nonCompliantPercent];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'GDPR Compliance Status',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 200,
+            child: data.totalUsers == 0
+                ? Center(
+                    child: Text('No data',
+                        style: GoogleFonts.inter(color: const Color(0xFF9CA3AF))))
+                : PieChart(
+                    PieChartData(
+                      pieTouchData: PieTouchData(
+                        touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                          setState(() {
+                            if (!event.isInterestedForInteractions ||
+                                pieTouchResponse == null ||
+                                pieTouchResponse.touchedSection == null) {
+                              _touchedIndex = -1;
+                              return;
+                            }
+                            _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                          });
+                        },
+                      ),
+                      sectionsSpace: 3,
+                      centerSpaceRadius: 40,
+                      sections: List.generate(3, (i) {
+                        final isTouched = i == _touchedIndex;
+                        return PieChartSectionData(
+                          value: values[i].toDouble(),
+                          color: colors[i],
+                          title: isTouched
+                              ? '${labels[i]}\n${values[i]} users'
+                              : '${percents[i].toStringAsFixed(0)}%',
+                          titleStyle: GoogleFonts.inter(
+                            fontSize: isTouched ? 11 : 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                          radius: isTouched ? 60 : 50,
+                          titlePositionPercentageOffset: isTouched ? 0.55 : 0.5,
+                        );
+                      }),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              _ChartLegendSquare(color: Color(0xFF16A34A), label: 'Compliant'),
+              SizedBox(width: 16),
+              _ChartLegendSquare(color: Color(0xFFF59E0B), label: 'In Progress'),
+              SizedBox(width: 16),
+              _ChartLegendSquare(color: Color(0xFFDC2626), label: 'Non-Compliant'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GdprBarChart extends StatelessWidget {
+  final GdprComplianceChartData data;
+  const _GdprBarChart({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxY = (data.totalUsers * 1.2).ceilToDouble().clamp(5.0, 1000.0);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Compliance Breakdown',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 200,
+            child: data.totalUsers == 0
+                ? Center(
+                    child: Text('No data',
+                        style: GoogleFonts.inter(color: const Color(0xFF9CA3AF))))
+                : BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: maxY,
+                      barTouchData: BarTouchData(
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipItem: (group, gIdx, rod, rIdx) =>
+                              BarTooltipItem(
+                            '${rod.toY.toInt()} users',
+                            GoogleFonts.inter(
+                                fontSize: 12,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 32,
+                            getTitlesWidget: (value, meta) {
+                              const labels = ['Compliant', 'In Progress', 'Non-Compliant'];
+                              final idx = value.toInt();
+                              if (idx >= 0 && idx < labels.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(labels[idx],
+                                      style: GoogleFonts.inter(
+                                          fontSize: 10,
+                                          color: const Color(0xFF9CA3AF))),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 32,
+                            getTitlesWidget: (value, meta) => Text(
+                              value.toInt().toString(),
+                              style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  color: const Color(0xFF9CA3AF)),
+                            ),
+                          ),
+                        ),
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (_) => const FlLine(
+                          color: Color(0xFFF3F4F6),
+                          strokeWidth: 1,
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: [
+                        BarChartGroupData(x: 0, barRods: [
+                          BarChartRodData(
+                            toY: data.completed.toDouble(),
+                            color: const Color(0xFF16A34A),
+                            width: 32,
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(4)),
+                          ),
+                        ]),
+                        BarChartGroupData(x: 1, barRods: [
+                          BarChartRodData(
+                            toY: data.inProgress.toDouble(),
+                            color: const Color(0xFFF59E0B),
+                            width: 32,
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(4)),
+                          ),
+                        ]),
+                        BarChartGroupData(x: 2, barRods: [
+                          BarChartRodData(
+                            toY: data.nonCompliant.toDouble(),
+                            color: const Color(0xFFDC2626),
+                            width: 32,
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(4)),
+                          ),
+                        ]),
+                      ],
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Total: ${data.totalUsers} users',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: const Color(0xFF6B7280),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REPORTS SECTION
+// ═══════════════════════════════════════════════════════════════
+
+class _ReportsSection extends ConsumerWidget {
+  const _ReportsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usersAsync = ref.watch(adminUsersProvider);
+    final complianceAsync = ref.watch(adminComplianceProvider);
+    final users = usersAsync.valueOrNull ?? [];
+    final compliance = complianceAsync.valueOrNull;
+
+    void exportEngagementCsv() {
+      final buf = StringBuffer('Name,Role,Organisation,Status,Kudos\n');
+      for (final u in users) {
+        buf.writeln('${u.fullName},${u.displayRole},${u.organizationId ?? ''},${u.statusLabel},${u.totalStars}');
+      }
+      _downloadCsv(buf.toString(), 'engagement_report_${DateTime.now().millisecondsSinceEpoch}.csv');
+    }
+
+    void exportEngagementPdf() {
+      PdfExport.exportEngagementReport(
+        users: users.map((u) => {
+          'name': u.fullName,
+          'role': u.displayRole,
+          'org': u.organizationId ?? '',
+          'status': u.statusLabel,
+          'kudos': '${u.totalStars}',
+        }).toList(),
+      );
+    }
+
+    void exportComplianceCsv() {
+      final buf = StringBuffer('Name,Role,Organisation,GDPR Training,Onboarding,Status\n');
+      for (final u in users) {
+        buf.writeln('${u.fullName},${u.displayRole},${u.organizationId ?? ''},${u.gdprTrainingCompleted ? 'Completed' : 'Pending'},${u.gdprConsentGiven ? 'Completed' : 'Pending'},${u.statusLabel}');
+      }
+      _downloadCsv(buf.toString(), 'compliance_report_${DateTime.now().millisecondsSinceEpoch}.csv');
+    }
+
+    void exportCompliancePdf() {
+      PdfExport.exportComplianceReport(
+        users: users.map((u) => {
+          'name': u.fullName,
+          'role': u.displayRole,
+          'org': u.organizationId ?? '',
+          'gdpr': u.gdprTrainingCompleted ? 'Completed' : 'Pending',
+          'onboarding': u.gdprConsentGiven ? 'Completed' : 'Pending',
+          'status': u.statusLabel,
+        }).toList(),
+        gdprPercent: compliance?.gdprTrainingPercent ?? 0,
+        onboardingPercent: compliance?.onboardingCompletePercent ?? 0,
+      );
+    }
+
+    void exportRecognitionCsv() {
+      final buf = StringBuffer('Name,Role,Stars Received,Status\n');
+      for (final u in users) {
+        buf.writeln('${u.fullName},${u.displayRole},${u.totalStars},${u.statusLabel}');
+      }
+      _downloadCsv(buf.toString(), 'recognition_report_${DateTime.now().millisecondsSinceEpoch}.csv');
+    }
+
+    void exportRecognitionPdf() {
+      PdfExport.exportRecognitionReport(
+        users: users.map((u) => {
+          'name': u.fullName,
+          'role': u.displayRole,
+          'stars': '${u.totalStars}',
+          'posts': '0',
+          'status': u.statusLabel,
+        }).toList(),
+        totalKudos: users.fold<int>(0, (sum, u) => sum + u.totalStars),
+        totalPosts: 0,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -6139,7 +6593,8 @@ class _ReportsSection extends StatelessWidget {
             title: 'Engagement Report',
             description:
                 'User activity, Kudos sent/received, and interaction metrics.',
-            showExportButtons: true,
+            onCsv: exportEngagementCsv,
+            onPdf: exportEngagementPdf,
           ),
           const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
           _ReportRow(
@@ -6149,7 +6604,8 @@ class _ReportsSection extends StatelessWidget {
             title: 'Training & Compliance Report',
             description:
                 'GDPR training status, certification tracking, and compliance metrics.',
-            showExportButtons: true,
+            onCsv: exportComplianceCsv,
+            onPdf: exportCompliancePdf,
           ),
           const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
           _ReportRow(
@@ -6159,7 +6615,8 @@ class _ReportsSection extends StatelessWidget {
             title: 'Feedback & Recognition Report',
             description:
                 'Recognition patterns, feedback analysis, and team engagement.',
-            showExportButtons: true,
+            onCsv: exportRecognitionCsv,
+            onPdf: exportRecognitionPdf,
           ),
           const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
           _ReportRow(
@@ -6169,7 +6626,6 @@ class _ReportsSection extends StatelessWidget {
             title: 'Scheduled Reports',
             description:
                 'No scheduled reports configured. Automated reporting can be set up in System Settings.',
-            showExportButtons: false,
           ),
         ],
       ),
@@ -6183,7 +6639,8 @@ class _ReportRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
-  final bool showExportButtons;
+  final VoidCallback? onCsv;
+  final VoidCallback? onPdf;
 
   const _ReportRow({
     required this.iconBg,
@@ -6191,17 +6648,18 @@ class _ReportRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
-    required this.showExportButtons,
+    this.onCsv,
+    this.onPdf,
   });
 
   @override
   Widget build(BuildContext context) {
+    final showButtons = onCsv != null || onPdf != null;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Icon badge
           Container(
             width: 40,
             height: 40,
@@ -6212,8 +6670,6 @@ class _ReportRow extends StatelessWidget {
             child: Icon(icon, size: 20, color: iconColor),
           ),
           const SizedBox(width: 16),
-
-          // Title + description
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -6237,46 +6693,47 @@ class _ReportRow extends StatelessWidget {
               ],
             ),
           ),
-
-          // Export buttons
-          if (showExportButtons) ...[
+          if (showButtons) ...[
             const SizedBox(width: 12),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.upload_outlined, size: 15),
-              label: Text(
-                'Export CSV',
-                style: GoogleFonts.inter(
-                    fontSize: 13, fontWeight: FontWeight.w500),
+            if (onCsv != null)
+              OutlinedButton.icon(
+                onPressed: onCsv,
+                icon: const Icon(Icons.upload_outlined, size: 15),
+                label: Text(
+                  'Export CSV',
+                  style: GoogleFonts.inter(
+                      fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF374151),
+                  side: const BorderSide(color: Color(0xFFD1D5DB)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
               ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF374151),
-                side: const BorderSide(color: Color(0xFFD1D5DB)),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+            if (onPdf != null) ...[
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: onPdf,
+                icon: const Icon(Icons.upload_outlined, size: 15),
+                label: Text(
+                  'Export PDF',
+                  style: GoogleFonts.inter(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3A8A),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.upload_outlined, size: 15),
-              label: Text(
-                'Export PDF',
-                style: GoogleFonts.inter(
-                    fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A8A),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
+            ],
           ],
         ],
       ),

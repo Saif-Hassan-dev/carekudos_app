@@ -47,7 +47,8 @@ class _SettingsNotificationsScreenState
         emailNotifications: _emailNotifications,
         pushNotifications: _pushNotifications,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Settings] Failed to save notification prefs: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to save preferences')),

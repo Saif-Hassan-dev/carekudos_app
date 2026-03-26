@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/theme/theme.dart';
 import '../../core/auth/auth_notifier.dart';
 import '../../core/auth/permissions_provider.dart';
+import '../../core/utils/constants.dart';
 import '../../core/widgets/app_logo.dart';
 
 enum _WebRole { manager, admin }
@@ -44,7 +47,24 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      final profile = await ref.read(userProfileProvider.future);
+      // Try cached provider first, fall back to direct Firestore read
+      var profile = ref.read(userProfileProvider).valueOrNull;
+      if (profile == null) {
+        try {
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            final doc = await FirebaseFirestore.instance
+                .collection(AppConstants.usersCollection)
+                .doc(user.uid)
+                .get();
+            if (doc.exists) {
+              profile = UserProfile.fromFirestore(doc);
+            }
+          }
+        } catch (e) {
+          debugPrint('[AdminLogin] Error reading profile: $e');
+        }
+      }
 
       if (_selectedRole == _WebRole.admin) {
         if (profile != null && profile.role == 'admin') {

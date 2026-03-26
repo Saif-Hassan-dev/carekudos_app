@@ -127,18 +127,31 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
               
-              const SizedBox(height: 12),
-              
-              // Page Indicator
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.neutral300,
-                  borderRadius: BorderRadius.circular(2),
+              const SizedBox(height: 16),
+
+              // Already have an account link
+              GestureDetector(
+                onTap: () => context.go('/login'),
+                child: RichText(
+                  text: TextSpan(
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.neutral600,
+                    ),
+                    children: const [
+                      TextSpan(text: 'Already have an account? '),
+                      TextSpan(
+                        text: 'Sign In',
+                        style: TextStyle(
+                          color: Color(0xFF0A2C6B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
             ],
           ),

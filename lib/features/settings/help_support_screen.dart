@@ -66,9 +66,7 @@ class HelpSupportScreen extends ConsumerWidget {
                         subtitle: 'Contact support to proceed',
                         trailing: Icon(Icons.chevron_right,
                             color: AppColors.neutral400, size: 22),
-                        onTap: () {
-                          // TODO: Open FAQ
-                        },
+                        onTap: () => launchUrl(Uri.parse('mailto:support@carekudos.com?subject=FAQ%20Question')),
                       ),
                     ],
                   ),
@@ -118,9 +116,7 @@ class HelpSupportScreen extends ConsumerWidget {
                         title: 'Privacy Policy',
                         trailing: Icon(Icons.chevron_right,
                             color: AppColors.neutral400, size: 22),
-                        onTap: () {
-                          // TODO: Open privacy policy
-                        },
+                        onTap: () => launchUrl(Uri.parse('https://carekudos-1.web.app/privacy')),
                       ),
                       Divider(
                           height: 1,
@@ -131,9 +127,7 @@ class HelpSupportScreen extends ConsumerWidget {
                         title: 'Terms & Conditions',
                         trailing: Icon(Icons.chevron_right,
                             color: AppColors.neutral400, size: 22),
-                        onTap: () {
-                          // TODO: Open terms & conditions
-                        },
+                        onTap: () => launchUrl(Uri.parse('https://carekudos-1.web.app/terms')),
                       ),
                     ],
                   ),

@@ -148,6 +148,34 @@ class CqcReportData {
   });
 }
 
+class CqcKloeScores {
+  final double wellLedScore;
+  final double caringScore;
+  // Sub-metrics for Well-Led
+  final double staffParticipationRate;
+  final double managerEngagementRate;
+  final double recognitionFrequency;
+  final double valuesAlignmentPercent;
+  // Sub-metrics for Caring
+  final double compassionTagPercent;
+  final double peerRecognitionRate;
+  final double recognitionPerStaff;
+  final double moraleTrendScore;
+
+  const CqcKloeScores({
+    this.wellLedScore = 0,
+    this.caringScore = 0,
+    this.staffParticipationRate = 0,
+    this.managerEngagementRate = 0,
+    this.recognitionFrequency = 0,
+    this.valuesAlignmentPercent = 0,
+    this.compassionTagPercent = 0,
+    this.peerRecognitionRate = 0,
+    this.recognitionPerStaff = 0,
+    this.moraleTrendScore = 0,
+  });
+}
+
 // ─────────────────────────────────────────────────────
 // Providers
 // ─────────────────────────────────────────────────────
@@ -174,36 +202,38 @@ final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
   final startOfDay = DateTime(now.year, now.month, now.day);
   final startOfWeek = startOfDay.subtract(Duration(days: now.weekday - 1));
 
-  // All posts (single fetch, filter client-side)
-  final allPostsSnap = await _firestore
+  // Parallel queries: pending posts + recent posts (server-side filtered)
+  final pendingFuture = _firestore
       .collection(AppConstants.postsCollection)
+      .where('approvalStatus', isEqualTo: 'pending')
+      .get();
+  final recentFuture = _firestore
+      .collection(AppConstants.postsCollection)
+      .where('createdAt', isGreaterThan: Timestamp.fromDate(startOfWeek))
       .get();
 
-  int pendingReviews = 0;
-  int gdprFlags = 0;
+  final results = await Future.wait([pendingFuture, recentFuture]);
+  final pendingDocs = results[0].docs;
+  final recentDocs = results[1].docs;
+
+  int pendingReviews = pendingDocs.length;
+  int gdprFlags = pendingDocs.where((d) => d.data()['gdprFlagged'] == true).length;
+
   int weeklyApproved = 0;
   final activeStaffIds = <String>{};
 
-  for (final doc in allPostsSnap.docs) {
+  for (final doc in recentDocs) {
     final data = doc.data();
-    final status = data['approvalStatus'] as String?;
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
         : null;
 
-    if (status == 'pending') {
-      pendingReviews++;
-      if (data['gdprFlagged'] == true) gdprFlags++;
+    if (createdAt != null && createdAt.isAfter(startOfDay)) {
+      final authorId = data['authorId'] as String?;
+      if (authorId != null) activeStaffIds.add(authorId);
     }
-
-    if (createdAt != null) {
-      if (createdAt.isAfter(startOfDay)) {
-        final authorId = data['authorId'] as String?;
-        if (authorId != null) activeStaffIds.add(authorId);
-      }
-      if (createdAt.isAfter(startOfWeek) && status == 'approved') {
-        weeklyApproved++;
-      }
+    if (data['approvalStatus'] == 'approved') {
+      weeklyApproved++;
     }
   }
 
@@ -330,12 +360,20 @@ final risingStarsProvider = FutureProvider<List<RisingStar>>((ref) async {
     ..sort((a, b) => b.value.compareTo(a.value));
   final topEntries = sortedEntries.take(3);
 
+  final topIds = topEntries.map((e) => e.key).toList();
+  if (topIds.isEmpty) return [];
+
+  // Batch fetch all top users in a single query
+  final usersSnap = await _firestore
+      .collection(AppConstants.usersCollection)
+      .where(FieldPath.documentId, whereIn: topIds)
+      .get();
+  final userMap = {for (final doc in usersSnap.docs) doc.id: doc.data()};
+
   final results = <RisingStar>[];
   for (final entry in topEntries) {
-    final userDoc =
-        await _firestore.collection(AppConstants.usersCollection).doc(entry.key).get();
-    if (userDoc.exists) {
-      final data = userDoc.data()!;
+    final data = userMap[entry.key];
+    if (data != null) {
       results.add(RisingStar(
         uid: entry.key,
         name: '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'.trim(),
@@ -648,6 +686,138 @@ final cqcReportProvider = FutureProvider<CqcReportData>((ref) async {
   );
 });
 
+/// CQC KLOE scores: "Well-Led" & "Caring" auto-calculated
+final cqcKloeScoresProvider = FutureProvider<CqcKloeScores>((ref) async {
+  final now = DateTime.now();
+  final startOfMonth = DateTime(now.year, now.month, 1);
+
+  // Fetch all users
+  final usersSnap = await _firestore.collection(AppConstants.usersCollection).get();
+  final allStaff = usersSnap.docs.where((d) {
+    final role = d.data()['role'] as String?;
+    return role == 'care_worker' || role == 'senior_carer';
+  }).toList();
+  final managers = usersSnap.docs.where((d) => d.data()['role'] == 'manager').toList();
+  final totalStaff = allStaff.length;
+  final totalManagers = managers.length;
+
+  if (totalStaff == 0) return const CqcKloeScores();
+
+  // Fetch all approved posts
+  final postsSnap = await _firestore
+      .collection(AppConstants.postsCollection)
+      .where('approvalStatus', isEqualTo: 'approved')
+      .get();
+
+  final monthPosts = postsSnap.docs.where((d) {
+    final ts = d.data()['createdAt'] as Timestamp?;
+    return ts != null && ts.toDate().isAfter(startOfMonth);
+  }).toList();
+
+  // Unique authors this month (staff who posted)
+  final staffAuthors = <String>{};
+  final managerAuthors = <String>{};
+  int compassionCount = 0;
+  int peerToPeerCount = 0;
+  int totalStarsMonth = 0;
+  final valueTags = <String>{};
+  final activeValues = ref.read(companyValuesProvider);
+
+  for (final doc in monthPosts) {
+    final data = doc.data();
+    final authorId = data['authorId'] as String? ?? '';
+    final category = data['category'] as String? ?? '';
+    final authorRole = usersSnap.docs
+        .where((u) => u.id == authorId)
+        .firstOrNull
+        ?.data()['role'] as String?;
+
+    if (authorRole == 'manager') {
+      managerAuthors.add(authorId);
+    } else {
+      staffAuthors.add(authorId);
+    }
+
+    totalStarsMonth += (data['stars'] as int?) ?? 1;
+
+    // Track compassion tags
+    if (category.toLowerCase().contains('compassion') ||
+        category.toLowerCase().contains('caring') ||
+        category.toLowerCase().contains('kindness')) {
+      compassionCount++;
+    }
+
+    // Track peer-to-peer (non-manager posts)
+    if (authorRole != 'manager') {
+      peerToPeerCount++;
+    }
+
+    // Track values coverage
+    if (activeValues.contains(category)) {
+      valueTags.add(category);
+    }
+  }
+
+  // ── Well-Led sub-metrics ──
+  final staffParticipationRate = (staffAuthors.length / totalStaff * 100).clamp(0.0, 100.0);
+  final managerEngagementRate = totalManagers > 0
+      ? (managerAuthors.length / totalManagers * 100).clamp(0.0, 100.0)
+      : 0.0;
+  final recognitionFrequency = monthPosts.isNotEmpty
+      ? (monthPosts.length / totalStaff * 10).clamp(0.0, 100.0)
+      : 0.0;
+  final valuesAlignmentPercent = activeValues.isNotEmpty
+      ? (valueTags.length / activeValues.length * 100).clamp(0.0, 100.0)
+      : 0.0;
+
+  // Well-Led = leadership visibility + participation + values alignment
+  final wellLedScore = (staffParticipationRate * 0.30 +
+          managerEngagementRate * 0.25 +
+          recognitionFrequency * 0.25 +
+          valuesAlignmentPercent * 0.20)
+      .clamp(0.0, 100.0);
+
+  // ── Caring sub-metrics ──
+  final compassionTagPercent = monthPosts.isNotEmpty
+      ? (compassionCount / monthPosts.length * 100).clamp(0.0, 100.0)
+      : 0.0;
+  final peerRecognitionRate = monthPosts.isNotEmpty
+      ? (peerToPeerCount / monthPosts.length * 100).clamp(0.0, 100.0)
+      : 0.0;
+  final recognitionPerStaff = (totalStarsMonth / totalStaff).clamp(0.0, 50.0);
+  final recognitionPerStaffNormalized = (recognitionPerStaff / 50 * 100).clamp(0.0, 100.0);
+  // Morale: how consistent is recognition over the month (daily spread)
+  final daysWithPosts = <int>{};
+  for (final doc in monthPosts) {
+    final ts = doc.data()['createdAt'] as Timestamp?;
+    if (ts != null) daysWithPosts.add(ts.toDate().day);
+  }
+  final daysSoFar = now.day;
+  final moraleTrendScore = daysSoFar > 0
+      ? (daysWithPosts.length / daysSoFar * 100).clamp(0.0, 100.0)
+      : 0.0;
+
+  // Caring = compassion + peer recognition + recognition volume + morale consistency
+  final caringScore = (compassionTagPercent * 0.35 +
+          peerRecognitionRate * 0.30 +
+          recognitionPerStaffNormalized * 0.20 +
+          moraleTrendScore * 0.15)
+      .clamp(0.0, 100.0);
+
+  return CqcKloeScores(
+    wellLedScore: wellLedScore,
+    caringScore: caringScore,
+    staffParticipationRate: staffParticipationRate,
+    managerEngagementRate: managerEngagementRate,
+    recognitionFrequency: recognitionFrequency,
+    valuesAlignmentPercent: valuesAlignmentPercent,
+    compassionTagPercent: compassionTagPercent,
+    peerRecognitionRate: peerRecognitionRate,
+    recognitionPerStaff: recognitionPerStaff,
+    moraleTrendScore: moraleTrendScore,
+  );
+});
+
 // ─────────────────────────────────────────────────────
 // Moderation Log model
 // ─────────────────────────────────────────────────────
@@ -655,7 +825,7 @@ final cqcReportProvider = FutureProvider<CqcReportData>((ref) async {
 class ModerationLog {
   final String postId;
   final String managerId;
-  final String action; // 'approved', 'rejected', 'edit_requested'
+  final String action; // 'activated', 'deactivated', 'deleted', 'edit_requested'
   final String? reason;
   final DateTime timestamp;
 
@@ -714,23 +884,22 @@ Future<void> _logModerationAction({
   }
 }
 
-/// Approve a post and notify the author
-Future<void> approvePost(String postId, String managerId) async {
-  // 1. Update the post status (the core action)
+/// Activate a post — makes it live in the feed and notifies the author
+Future<void> activatePost(String postId, String managerId) async {
   await _firestore.collection(AppConstants.postsCollection).doc(postId).update({
+    'isActive': true,
     'approvalStatus': 'approved',
     'approvedBy': managerId,
     'approvedAt': FieldValue.serverTimestamp(),
   });
 
-  // 2. Log moderation action (non-blocking)
   await _logModerationAction(
     postId: postId,
     managerId: managerId,
-    action: 'approved',
+    action: 'activated',
   );
 
-  // 3. Notify the post author (best-effort)
+  // Notify the post author (best-effort)
   try {
     final postDoc = await _firestore
         .collection(AppConstants.postsCollection)
@@ -741,26 +910,27 @@ Future<void> approvePost(String postId, String managerId) async {
       await NotificationService.createNotification(
         userId: authorId,
         type: NotificationType.postApproved,
-        title: 'Post Approved!',
-        message: 'Your post has been approved and is now live in the feed.',
+        title: 'Post Activated!',
+        message: 'Your post has been activated and is now live in the feed.',
         relatedPostId: postId,
         relatedUserId: managerId,
       );
       await PushNotificationService.sendPushNotification(
         recipientId: authorId,
-        title: 'Post Approved!',
-        body: 'Your post has been approved and is now live in the feed.',
-        data: {'type': 'postApproved', 'postId': postId},
+        title: 'Post Activated!',
+        body: 'Your post has been activated and is now live in the feed.',
+        data: {'type': 'postActivated', 'postId': postId},
       );
     }
   } catch (e) {
-    debugPrint('[ApprovePost] Notification failed: $e');
+    debugPrint('[ActivatePost] Notification failed: $e');
   }
 }
 
-/// Reject a post (with GDPR violation explanation)
-Future<void> rejectPost(String postId, String managerId, {String? reason}) async {
+/// Deactivate a post — removes it from the feed
+Future<void> deactivatePost(String postId, String managerId, {String? reason}) async {
   await _firestore.collection(AppConstants.postsCollection).doc(postId).update({
+    'isActive': false,
     'approvalStatus': 'rejected',
     'rejectedBy': managerId,
     'rejectedAt': FieldValue.serverTimestamp(),
@@ -769,48 +939,24 @@ Future<void> rejectPost(String postId, String managerId, {String? reason}) async
   await _logModerationAction(
     postId: postId,
     managerId: managerId,
-    action: 'rejected',
+    action: 'deactivated',
     reason: reason,
   );
 }
 
-/// Request edits on a post
-Future<void> requestEditPost(String postId, String managerId, {String? reason}) async {
+/// Delete a post permanently
+Future<void> deletePost(String postId, String managerId) async {
   await _firestore.collection(AppConstants.postsCollection).doc(postId).update({
-    'approvalStatus': 'edit_requested',
-    'editRequestedBy': managerId,
-    'editRequestedAt': FieldValue.serverTimestamp(),
-    if (reason != null && reason.isNotEmpty) 'editRequestReason': reason,
+    'isDeleted': true,
+    'approvalStatus': 'deleted',
+    'deletedBy': managerId,
+    'deletedAt': FieldValue.serverTimestamp(),
   });
   await _logModerationAction(
     postId: postId,
     managerId: managerId,
-    action: 'edit_requested',
-    reason: reason,
+    action: 'deleted',
   );
-
-  // Notify the author that edits are needed (best-effort)
-  try {
-    final postDoc = await _firestore
-        .collection(AppConstants.postsCollection)
-        .doc(postId)
-        .get();
-    final authorId = postDoc.data()?['authorId'] as String?;
-    if (authorId != null && authorId.isNotEmpty) {
-      await NotificationService.createNotification(
-        userId: authorId,
-        type: NotificationType.system,
-        title: 'Edits Requested',
-        message: reason != null && reason.isNotEmpty
-            ? 'A manager has requested edits on your post: $reason'
-            : 'A manager has requested edits on your post. Please review and update it.',
-        relatedPostId: postId,
-        relatedUserId: managerId,
-      );
-    }
-  } catch (e) {
-    debugPrint('[RequestEdit] Notification failed: $e');
-  }
 }
 
 /// Give a manager star to a staff member.

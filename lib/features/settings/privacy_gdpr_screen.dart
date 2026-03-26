@@ -1,6 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../../core/services/firebase_service.dart';
 import '../../core/theme/theme.dart';
@@ -29,7 +32,8 @@ class _PrivacyGdprScreenState extends ConsumerState<PrivacyGdprScreen> {
         userId: userId,
         optIn: _marketingOptIn,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Privacy] Failed to save marketing opt-in: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to save preference')),
@@ -98,13 +102,13 @@ class _PrivacyGdprScreenState extends ConsumerState<PrivacyGdprScreen> {
               _SectionHeader(title: 'Your data rights'),
               _ActionItem(
                 title: 'Request a copy of my data',
-                subtitle: 'Contact support to proceed',
-                onTap: () => _contactSupport('data request'),
+                subtitle: 'We\'ll email your data within 30 days',
+                onTap: () => _submitDeletionRequest('data_export'),
               ),
               _ActionItem(
                 title: 'Request account deletion',
-                subtitle: 'Contact support to proceed',
-                onTap: () => _contactSupport('account deletion'),
+                subtitle: 'Your account will be deleted within 30 days',
+                onTap: () => _confirmAccountDeletion(),
               ),
               AppSpacing.verticalGap24,
 
@@ -112,15 +116,11 @@ class _PrivacyGdprScreenState extends ConsumerState<PrivacyGdprScreen> {
               _SectionHeader(title: 'Legal documents'),
               _NavigationItem(
                 title: 'Privacy Policy',
-                onTap: () {
-                  // TODO: Open privacy policy
-                },
+                onTap: () => launchUrl(Uri.parse('https://carekudos-1.web.app/privacy')),
               ),
               _NavigationItem(
                 title: 'Terms & Conditions',
-                onTap: () {
-                  // TODO: Open terms & conditions
-                },
+                onTap: () => launchUrl(Uri.parse('https://carekudos-1.web.app/terms')),
               ),
               AppSpacing.verticalGap32,
             ],
@@ -130,10 +130,62 @@ class _PrivacyGdprScreenState extends ConsumerState<PrivacyGdprScreen> {
     );
   }
 
-  void _contactSupport(String requestType) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Contact support@carekudos.com for $requestType'),
+  Future<void> _submitDeletionRequest(String type) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('deletion_requests').add({
+        'userId': user.uid,
+        'email': user.email,
+        'type': type,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(type == 'data_export'
+                ? 'Data export request submitted. We\'ll email you within 30 days.'
+                : 'Account deletion request submitted. Your account will be removed within 30 days.'),
+            backgroundColor: const Color(0xFF16A34A),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[Privacy] Failed to submit $type request: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to submit request: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _confirmAccountDeletion() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'Are you sure you want to request account deletion? '
+          'This action cannot be undone. Your account and all associated data '
+          'will be permanently deleted within 30 days.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _submitDeletionRequest('account_deletion');
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete My Account'),
+          ),
+        ],
       ),
     );
   }

@@ -30,9 +30,11 @@ service cloud.firestore {
       // Only the user can create their own profile
       allow create: if isSignedIn() && isOwner(userId);
       
-      // Owner can update anything; others can only increment star fields
-      allow update: if isSignedIn() 
+      // Owner can update anything; admins/managers can update role/status; others can only increment star fields
+      allow update: if isSignedIn()
                     && (isOwner(userId)
+                        || isAdmin()
+                        || isManager()
                         || request.resource.data.diff(resource.data).affectedKeys()
                            .hasOnly(['totalStars', 'starsThisMonth']));
       
@@ -51,21 +53,18 @@ service cloud.firestore {
                     && request.resource.data.authorId == request.auth.uid;
       
       // Author can update anything; others can update stars/starredBy;
-      // Managers can update approval fields
+      // Managers and admins can update any moderation fields (activate/deactivate/soft-delete)
       allow update: if isSignedIn()
                     && (resource.data.authorId == request.auth.uid
                         || request.resource.data.diff(resource.data).affectedKeys()
                            .hasOnly(['stars', 'starredBy'])
-                        || ((isManager() || isAdmin())
-                            && request.resource.data.diff(resource.data).affectedKeys()
-                               .hasOnly(['approvalStatus', 'approvedBy', 'approvedAt',
-                                         'rejectedBy', 'rejectedAt', 'rejectionReason',
-                                         'editRequestedBy', 'editRequestedAt', 'editRequestReason',
-                                         'status'])));
-      
-      // Only post author can delete their posts
-      allow delete: if isSignedIn() 
-                    && resource.data.authorId == request.auth.uid;
+                        || (isManager() || isAdmin()));
+
+      // Post author or manager/admin can delete posts
+      allow delete: if isSignedIn()
+                    && (resource.data.authorId == request.auth.uid
+                        || isManager()
+                        || isAdmin());
       
       // Subcollection: Stars given to posts
       match /starredBy/{userId} {
@@ -149,7 +148,7 @@ service cloud.firestore {
     match /invite_codes/{codeId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isManager();
-      allow update: if isSignedIn();
+      allow update: if isSignedIn() && isManager();
       allow delete: if false;
     }
 
@@ -195,6 +194,34 @@ service cloud.firestore {
     match /training_content/{moduleId} {
       allow read: if isSignedIn();
       allow create, update, delete: if isSignedIn() && isAdmin();
+    }
+
+    // Deletion requests – GDPR data export / account deletion
+    match /deletion_requests/{requestId} {
+      // Users can create their own deletion requests
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid;
+
+      // Users can read their own requests
+      allow read: if isSignedIn()
+                  && resource.data.userId == request.auth.uid;
+
+      // Admins can read and update all requests
+      allow read, update: if isSignedIn() && isAdmin();
+      allow delete: if false;
+    }
+
+    // Demo requests – public landing page form submissions
+    match /demo_requests/{requestId} {
+      // Anyone can create a demo request (no auth required)
+      allow create: if request.resource.data.keys().hasAll(['name', 'email', 'createdAt', 'status'])
+                    && request.resource.data.name is string
+                    && request.resource.data.email is string;
+
+      // Only admins can read/manage demo requests
+      allow read: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if false;
     }
 
     // Announcements – broadcast messages from admin/manager to all staff

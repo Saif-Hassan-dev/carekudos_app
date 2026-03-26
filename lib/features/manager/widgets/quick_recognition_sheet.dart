@@ -144,7 +144,8 @@ class _QuickRecognitionSheetState extends State<QuickRecognitionSheet> {
           .toList();
 
       if (mounted) setState(() { _searchResults = results; _isSearching = false; });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[QuickRecognition] Staff search failed: $e');
       if (mounted) setState(() { _searchResults = []; _isSearching = false; });
     }
   }

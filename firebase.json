@@ -1,10 +1,13 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "functions": {
     "source": "functions",
     "runtime": "nodejs20"
   },
   "hosting": {
-    "public": "build/web",
+    "public": "build/web_admin",
     "ignore": [
       "firebase.json",
       "**/.*",

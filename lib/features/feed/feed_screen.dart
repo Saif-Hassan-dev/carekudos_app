@@ -41,6 +41,64 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   bool _showHeroSection = true;
   String? _dismissedAnnouncementId;
 
+  // Pagination
+  static const _pageSize = 20;
+  final _scrollController = ScrollController();
+  DocumentSnapshot? _lastDoc;
+  bool _hasMore = true;
+  bool _loadingMore = false;
+  List<QueryDocumentSnapshot> _allDocs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_loadingMore &&
+        _hasMore) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_lastDoc == null || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .orderBy('createdAt', descending: true)
+          .startAfterDocument(_lastDoc!)
+          .limit(_pageSize)
+          .get();
+      if (snap.docs.isNotEmpty) {
+        _lastDoc = snap.docs.last;
+        setState(() {
+          _allDocs.addAll(snap.docs);
+          _hasMore = snap.docs.length == _pageSize;
+          _loadingMore = false;
+        });
+      } else {
+        setState(() {
+          _hasMore = false;
+          _loadingMore = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[Feed] Failed to load more: $e');
+      setState(() => _loadingMore = false);
+    }
+  }
+
   void _onNavTap(int index) {
     if (index == 1) {
       _navigateToCreatePost();
@@ -286,14 +344,15 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                   stream: FirebaseFirestore.instance
                       .collection(AppConstants.postsCollection)
                       .orderBy('createdAt', descending: true)
-                      .limit(50)
+                      .limit(_pageSize)
                       .snapshots(),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        _allDocs.isEmpty) {
                       return const LoadingView(message: 'Loading feed...');
                     }
 
-                    if (snapshot.hasError) {
+                    if (snapshot.hasError && _allDocs.isEmpty) {
                       return ErrorView(
                         title: 'Error Loading Feed',
                         message:
@@ -302,19 +361,29 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                       );
                     }
 
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    // Merge stream data (first page, real-time) with paginated docs
+                    if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                      final streamDocs = snapshot.data!.docs;
+                      _lastDoc = streamDocs.last;
+                      _hasMore = streamDocs.length == _pageSize;
+                      // Replace first page with stream data, keep extras
+                      final extraDocs = _allDocs.length > streamDocs.length
+                          ? _allDocs.sublist(streamDocs.length)
+                          : <QueryDocumentSnapshot>[];
+                      _allDocs = [...streamDocs, ...extraDocs];
+                    }
+
+                    if (_allDocs.isEmpty) {
                       return _buildEmptyState(context);
                     }
 
-                    // Filter to only approved posts (avoids composite index)
-                    // Also exclude deactivated and deleted posts
-                    final approvedDocs = snapshot.data!.docs.where((doc) {
+                    // Filter to only approved posts
+                    final approvedDocs = _allDocs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final status = data['approvalStatus'] as String?;
                       final isActive = data['isActive'] as bool? ?? true;
                       final isDeleted = data['isDeleted'] as bool? ?? false;
                       if (isDeleted || !isActive) return false;
-                      // Show approved posts, plus legacy posts without status
                       return status == 'approved' || status == null;
                     }).toList();
 
@@ -325,16 +394,35 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     return RefreshIndicator(
                       color: AppColors.primary,
                       onRefresh: () async {
-                        setState(() {});
+                        setState(() {
+                          _allDocs.clear();
+                          _lastDoc = null;
+                          _hasMore = true;
+                        });
                         await Future.delayed(const Duration(milliseconds: 500));
                       },
                       child: ListView.builder(
+                        controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
-                        itemCount: approvedDocs.length,
+                        itemCount: approvedDocs.length + (_hasMore ? 1 : 0),
                         addAutomaticKeepAlives: true,
                         itemBuilder: (context, index) {
+                          // Loading indicator at bottom
+                          if (index == approvedDocs.length) {
+                            return const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(
+                                child: SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                            );
+                          }
+
                           final doc = approvedDocs[index];
                           final data = doc.data() as Map<String, dynamic>;
 
@@ -1052,6 +1140,7 @@ class _PostCardState extends ConsumerState<_PostCard>
           .update({
         'starredBy': FieldValue.arrayRemove([currentUser.uid]),
       });
+      ref.invalidate(starsGivenTodayProvider);
       if (mounted) {
         setState(() => _hasGivenStar = false);
         context.showSnackBar('Star removed');

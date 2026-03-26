@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../features/auth/welcome_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/forgot_password_screen.dart';
@@ -29,6 +31,7 @@ import '../features/admin/admin_login_screen.dart';
 import '../core/auth/auth_provider.dart';
 import '../core/auth/permissions_provider.dart';
 import '../core/services/storage_service.dart';
+import '../core/utils/constants.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateStream = ref.watch(authStateProvider.stream);
@@ -43,76 +46,80 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Admin routes bypass regular app auth flow
       if (state.matchedLocation.startsWith('/admin')) return null;
 
-      final user = ref.read(authStateProvider).value;
+      // Use FirebaseAuth directly — avoids StreamProvider race condition
+      // where authStateProvider hasn't processed the new event yet
+      final user = FirebaseAuth.instance.currentUser;
       final isLoggedIn = user != null;
       final hasSeenOnboarding = StorageService.hasCompletedOnboarding();
 
-      // If user is logged in
-      if (isLoggedIn) {
-        // Check if profile exists in Firestore
-        final profile = await ref.read(userProfileProvider.future);
-        final hasProfile = profile != null && profile.firstName.isNotEmpty;
+      // ── PUBLIC ROUTES (no auth required) ──
+      const publicRoutes = {'/login', '/welcome', '/onboarding', '/forgot-password'};
 
-        if (!hasProfile && state.matchedLocation != '/onboarding') {
-          return '/onboarding'; // Force onboarding completion
+      if (isLoggedIn) {
+        // Mark device as "has seen onboarding" so logout goes to /login, not /welcome
+        if (!hasSeenOnboarding) {
+          StorageService.setOnboardingComplete(true);
         }
 
-        // Profile exists but GDPR training not completed — force quiz
-        if (hasProfile && !(profile!.gdprTrainingCompleted) &&
+        // Try cached provider first, fall back to direct Firestore read
+        var profile = ref.read(userProfileProvider).valueOrNull;
+        if (profile == null) {
+          try {
+            final doc = await FirebaseFirestore.instance
+                .collection(AppConstants.usersCollection)
+                .doc(user.uid)
+                .get();
+            if (doc.exists) {
+              profile = UserProfile.fromFirestore(doc);
+            }
+          } catch (e) {
+            debugPrint('[Router] Error reading profile directly: $e');
+          }
+        }
+        final hasProfile = profile != null && profile.firstName.isNotEmpty;
+
+        // Step 1: No profile → force onboarding
+        if (!hasProfile && state.matchedLocation != '/onboarding') {
+          return '/onboarding';
+        }
+
+        // Step 2: Profile exists but GDPR training not done → force quiz
+        if (hasProfile && !profile.gdprTrainingCompleted &&
             state.matchedLocation != '/gdpr-training') {
           return '/gdpr-training';
         }
 
-        // Manager with GDPR done but core values not set up — force values setup
-        if (hasProfile && profile!.gdprTrainingCompleted &&
+        // Step 3: Manager with GDPR done but core values not set → force setup
+        if (hasProfile && profile.gdprTrainingCompleted &&
             profile.isManager && !profile.coreValuesSetupComplete &&
             state.matchedLocation != '/select-core-values') {
           return '/select-core-values';
         }
 
-        // Fully onboarded — redirect away from auth/onboarding screens
-        if (hasProfile && profile!.gdprTrainingCompleted &&
-            (!profile.isManager || profile.coreValuesSetupComplete) &&
-            (state.matchedLocation == '/welcome' ||
-                state.matchedLocation == '/login' ||
-                state.matchedLocation == '/onboarding' ||
-                state.matchedLocation == '/gdpr-training' ||
-                state.matchedLocation == '/select-core-values')) {
+        // Step 4: Fully onboarded — redirect away from auth/setup screens
+        final isFullyOnboarded = hasProfile &&
+            profile.gdprTrainingCompleted &&
+            (!profile.isManager || profile.coreValuesSetupComplete);
+        final isOnAuthScreen =
+            publicRoutes.contains(state.matchedLocation) ||
+            state.matchedLocation == '/gdpr-training' ||
+            state.matchedLocation == '/select-core-values';
+
+        if (isFullyOnboarded && isOnAuthScreen) {
           return profile.isManager ? '/manager-dashboard' : '/feed';
         }
       } else {
-        // User is NOT logged in
-        // If they haven't completed onboarding, show welcome screen
-        if (!hasSeenOnboarding && state.matchedLocation != '/welcome' && state.matchedLocation != '/onboarding' && state.matchedLocation != '/forgot-password') {
-          return '/welcome';
+        // ── USER IS NOT LOGGED IN ──
+        // If on a public route, allow it (but redirect /welcome→/login for returning users)
+        if (publicRoutes.contains(state.matchedLocation)) {
+          if (state.matchedLocation == '/welcome' && hasSeenOnboarding) {
+            return '/login';
+          }
+          return null;
         }
-        
-        // If they've completed onboarding but accessing welcome, redirect to login
-        // Allow /onboarding access so users can register a new account
-        if (hasSeenOnboarding && state.matchedLocation == '/welcome') {
-          return '/login';
-        }
-        
-        // If they're trying to access protected routes without login
-        // (excluding public routes: login, welcome, onboarding, forgot-password)
-        if (state.matchedLocation != '/login' &&
-            state.matchedLocation != '/welcome' &&
-            state.matchedLocation != '/onboarding' &&
-            state.matchedLocation != '/forgot-password' &&
-            (state.matchedLocation == '/feed' ||
-            state.matchedLocation == '/manager-dashboard' ||
-            state.matchedLocation == '/profile' ||
-            state.matchedLocation == '/create-post' ||
-            state.matchedLocation == '/notifications' ||
-            state.matchedLocation.startsWith('/post/') ||
-            state.matchedLocation.startsWith('/user-profile/') ||
-            state.matchedLocation.startsWith('/settings') ||
-            state.matchedLocation == '/gdpr-training' ||
-            state.matchedLocation == '/gdpr-guidelines' ||
-            state.matchedLocation == '/audit-log' ||
-            state.matchedLocation == '/select-core-values')) {
-          return hasSeenOnboarding ? '/login' : '/welcome';
-        }
+
+        // Any other route is protected → redirect to login or welcome
+        return hasSeenOnboarding ? '/login' : '/welcome';
       }
       return null;
     },
@@ -121,7 +128,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/splash',
         builder: (context, state) => SplashScreen(
           onComplete: () {
-            final user = ref.read(authStateProvider).value;
+            // Use FirebaseAuth directly — provider may still be loading
+            final user = FirebaseAuth.instance.currentUser;
             final hasSeenOnboarding = StorageService.hasCompletedOnboarding();
             if (user != null) {
               context.go('/feed');
@@ -159,11 +167,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         redirect: (context, state) async {
           // If the user is a manager, redirect to manager dashboard
           try {
-            final profile = await ref.read(userProfileProvider.future);
+            var profile = ref.read(userProfileProvider).valueOrNull;
+            if (profile == null) {
+              final user = FirebaseAuth.instance.currentUser;
+              if (user != null) {
+                final doc = await FirebaseFirestore.instance
+                    .collection(AppConstants.usersCollection)
+                    .doc(user.uid)
+                    .get();
+                if (doc.exists) {
+                  profile = UserProfile.fromFirestore(doc);
+                }
+              }
+            }
             if (profile != null && profile.isManager) {
               return '/manager-dashboard';
             }
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('[Router] Error checking manager role: $e');
+          }
           return null;
         },
         builder: (context, state) => const FeedScreen(),

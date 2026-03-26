@@ -13,6 +13,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/auth/permissions_provider.dart';
 import '../../core/utils/constants.dart';
 import '../../core/widgets/app_logo.dart';
+import '../../core/utils/pdf_export.dart';
 import '../manager/providers/manager_dashboard_provider.dart';
 
 // ═══════════════════════════════════════════════════════════════
@@ -401,11 +402,12 @@ class _ValuesDistributionCard extends ConsumerWidget {
 // CQC EVIDENCE REPORT CARD
 // ═══════════════════════════════════════════════════════════════
 
-class _CqcReportCard extends StatelessWidget {
+class _CqcReportCard extends ConsumerWidget {
   const _CqcReportCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final teamAsync = ref.watch(teamRecognitionProvider);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecor,
@@ -438,7 +440,20 @@ class _CqcReportCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              final team = teamAsync.valueOrNull ?? [];
+              PdfExport.exportRecognitionReport(
+                users: team.map((m) => {
+                  'name': m.name,
+                  'role': 'Care Worker',
+                  'stars': '${m.totalStars}',
+                  'posts': '0',
+                  'status': 'Active',
+                }).toList(),
+                totalKudos: team.fold<int>(0, (sum, m) => sum + m.totalStars),
+                totalPosts: 0,
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1E3A8A),
               foregroundColor: Colors.white,
@@ -521,12 +536,77 @@ class _EvidenceCultureCard extends ConsumerWidget {
 // NEEDS REVIEW PANEL
 // ═══════════════════════════════════════════════════════════════
 
-class _NeedsReviewPanel extends ConsumerWidget {
+class _NeedsReviewPanel extends ConsumerStatefulWidget {
   const _NeedsReviewPanel();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(pendingPostsProvider);
+  ConsumerState<_NeedsReviewPanel> createState() => _NeedsReviewPanelState();
+}
+
+class _NeedsReviewPanelState extends ConsumerState<_NeedsReviewPanel> {
+  static const _pageSize = 10;
+  int _limit = _pageSize;
+  List<PendingPost> _posts = [];
+  bool _loading = true;
+  bool _hasMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch({bool reset = false}) async {
+    if (reset) {
+      setState(() {
+        _limit = _pageSize;
+        _loading = true;
+      });
+    }
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .where('approvalStatus', isEqualTo: 'pending')
+          .get();
+
+      final all = snap.docs.map((doc) {
+        final data = doc.data();
+        return PendingPost(
+          postId: doc.id,
+          authorId: data['authorId'] ?? '',
+          authorName: data['authorName'] ?? 'Unknown',
+          authorRole: data['authorRole'] ?? 'care_worker',
+          content: data['content'] ?? '',
+          category: data['category'] ?? 'General',
+          hasGdprFlag: data['gdprFlagged'] == true,
+          createdAt: data['createdAt'] != null
+              ? (data['createdAt'] as Timestamp).toDate()
+              : DateTime.now(),
+        );
+      }).toList();
+
+      all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      if (mounted) {
+        setState(() {
+          _hasMore = all.length > _limit;
+          _posts = all.take(_limit).toList();
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[WebManager] Failed to fetch posts: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _loadMore() {
+    setState(() => _limit += _pageSize);
+    _fetch();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       decoration: _cardDecor,
       child: Column(
@@ -543,74 +623,79 @@ class _NeedsReviewPanel extends ConsumerWidget {
                     style: _inter(15,
                         weight: FontWeight.w600,
                         color: const Color(0xFF111827))),
-                async.whenOrNull(
-                      data: (posts) => posts.isNotEmpty
-                          ? Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEE2E2),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text('${posts.length}',
-                                  style: _inter(12,
-                                      weight: FontWeight.w600,
-                                      color: const Color(0xFFEF4444))),
-                            )
-                          : null,
-                    ) ??
-                    const SizedBox(),
+                if (_posts.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEE2E2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('${_posts.length}',
+                        style: _inter(12,
+                            weight: FontWeight.w600,
+                            color: const Color(0xFFEF4444))),
+                  ),
               ],
             ),
           ),
           const SizedBox(height: 12),
 
           // ── Scrollable posts list ──
-          async.when(
-            loading: () => const Padding(
+          if (_loading)
+            const Padding(
               padding: EdgeInsets.all(32),
               child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('Error: $e'),
-            ),
-            data: (posts) {
-              if (posts.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        const Icon(Icons.check_circle_outline,
-                            size: 40, color: Color(0xFF9CA3AF)),
-                        const SizedBox(height: 8),
-                        Text('All caught up!',
-                            style: _inter(14,
-                                weight: FontWeight.w600,
-                                color: const Color(0xFF6B7280))),
-                        const SizedBox(height: 4),
-                        Text('No posts pending review',
-                            style:
-                                _inter(12, color: const Color(0xFF9CA3AF))),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              // Scrollable list with a max height so the panel
-              // doesn't grow infinitely
-              return ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 560),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  physics: const ClampingScrollPhysics(),
-                  itemCount: posts.length,
-                  itemBuilder: (_, i) => _PostReviewCard(post: posts[i]),
+            )
+          else if (_posts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.check_circle_outline,
+                        size: 40, color: Color(0xFF9CA3AF)),
+                    const SizedBox(height: 8),
+                    Text('All caught up!',
+                        style: _inter(14,
+                            weight: FontWeight.w600,
+                            color: const Color(0xFF6B7280))),
+                    const SizedBox(height: 4),
+                    Text('No posts pending review',
+                        style: _inter(12, color: const Color(0xFF9CA3AF))),
+                  ],
                 ),
-              );
-            },
-          ),
+              ),
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 560),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const ClampingScrollPhysics(),
+                itemCount: _posts.length,
+                itemBuilder: (_, i) => _PostReviewCard(
+                  post: _posts[i],
+                  onRefresh: () => _fetch(reset: true),
+                ),
+              ),
+            ),
+
+          // ── Load More ──
+          if (_hasMore && !_loading)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _loadMore,
+                  child: Text('Load more',
+                      style: _inter(13,
+                          weight: FontWeight.w500,
+                          color: const Color(0xFF1E3A8A))),
+                ),
+              ),
+            ),
 
           // ── Give Kudos Now ──
           Padding(
@@ -646,7 +731,8 @@ class _NeedsReviewPanel extends ConsumerWidget {
 
 class _PostReviewCard extends ConsumerStatefulWidget {
   final PendingPost post;
-  const _PostReviewCard({required this.post});
+  final VoidCallback onRefresh;
+  const _PostReviewCard({required this.post, required this.onRefresh});
 
   @override
   ConsumerState<_PostReviewCard> createState() => _PostReviewCardState();
@@ -655,14 +741,60 @@ class _PostReviewCard extends ConsumerStatefulWidget {
 class _PostReviewCardState extends ConsumerState<_PostReviewCard> {
   bool _loading = false;
 
-  Future<void> _act(String status) async {
+  Future<void> _activate() async {
     setState(() => _loading = true);
-    await FirebaseFirestore.instance
-        .collection(AppConstants.postsCollection)
-        .doc(widget.post.postId)
-        .update({'approvalStatus': status});
-    ref.invalidate(pendingPostsProvider);
+    await activatePost(
+      widget.post.postId,
+      ref.read(currentUserProvider)?.uid ?? '',
+    );
     ref.invalidate(dashboardStatsProvider);
+    widget.onRefresh();
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _deactivate() async {
+    setState(() => _loading = true);
+    await deactivatePost(
+      widget.post.postId,
+      ref.read(currentUserProvider)?.uid ?? '',
+    );
+    ref.invalidate(dashboardStatsProvider);
+    widget.onRefresh();
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete Post', style: _inter(16, weight: FontWeight.w600)),
+        content: Text(
+            'This will permanently delete the post. This cannot be undone.',
+            style: _inter(14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: _inter(14)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Delete', style: _inter(14, weight: FontWeight.w600, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _loading = true);
+    await deletePost(
+      widget.post.postId,
+      ref.read(currentUserProvider)?.uid ?? '',
+    );
+    ref.invalidate(dashboardStatsProvider);
+    widget.onRefresh();
     if (mounted) setState(() => _loading = false);
   }
 
@@ -705,7 +837,7 @@ class _PostReviewCardState extends ConsumerState<_PostReviewCard> {
             ],
           ),
           const SizedBox(height: 8),
-          // Content — max 2 lines
+          // Content — max 3 lines
           Text(
             p.content,
             style: _inter(12.5, color: const Color(0xFF374151)),
@@ -723,9 +855,25 @@ class _PostReviewCardState extends ConsumerState<_PostReviewCard> {
           else
             Row(
               children: [
+                // Delete icon button
+                OutlinedButton(
+                  onPressed: _delete,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFDC2626),
+                    side: const BorderSide(color: Color(0xFFFCA5A5)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 9),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    minimumSize: Size.zero,
+                  ),
+                  child: const Icon(Icons.delete_outline, size: 16),
+                ),
+                const SizedBox(width: 8),
+                // Deactivate button
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _act('rejected'),
+                    onPressed: _deactivate,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF374151),
                       side: const BorderSide(color: Color(0xFFD1D5DB)),
@@ -733,13 +881,15 @@ class _PostReviewCardState extends ConsumerState<_PostReviewCard> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: Text('Reject', style: _inter(13, weight: FontWeight.w500)),
+                    child: Text('Deactivate',
+                        style: _inter(12, weight: FontWeight.w500)),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                // Activate button
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _act('approved'),
+                    onPressed: _activate,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1E3A8A),
                       foregroundColor: Colors.white,
@@ -748,8 +898,8 @@ class _PostReviewCardState extends ConsumerState<_PostReviewCard> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: Text('Approve',
-                        style: _inter(13,
+                    child: Text('Activate',
+                        style: _inter(12,
                             weight: FontWeight.w600, color: Colors.white)),
                   ),
                 ),
@@ -933,7 +1083,13 @@ class _RisingStarRow extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: () => _showStaffProfile(
+                context,
+                star.uid,
+                star.name,
+                role: star.description,
+                photoBase64: star.profilePhotoBase64,
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF1E3A8A),
                 side: const BorderSide(color: Color(0xFF1E3A8A)),
@@ -983,7 +1139,12 @@ class _TeamRecognitionCard extends ConsumerWidget {
                     .take(6)
                     .map((m) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
+                          child: InkWell(
+                            onTap: () => _showStaffProfile(
+                              context, m.uid, m.name,
+                              photoBase64: m.profilePhotoBase64),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Row(
                             children: [
                               _avatar(m.name, m.profilePhotoBase64,
                                   radius: 16),
@@ -1003,6 +1164,7 @@ class _TeamRecognitionCard extends ConsumerWidget {
                                       color: const Color(0xFF374151))),
                             ],
                           ),
+                        ),
                         ))
                     .toList(),
               );
@@ -1043,7 +1205,12 @@ class _TopChampionsCard extends ConsumerWidget {
                 children: members
                     .map((m) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
+                          child: InkWell(
+                            onTap: () => _showStaffProfile(
+                              context, m.uid, m.name,
+                              photoBase64: m.profilePhotoBase64),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Row(
                             children: [
                               _avatar(m.name, m.profilePhotoBase64,
                                   radius: 16),
@@ -1063,6 +1230,7 @@ class _TopChampionsCard extends ConsumerWidget {
                                       color: const Color(0xFF374151))),
                             ],
                           ),
+                        ),
                         ))
                     .toList(),
               );
@@ -1102,6 +1270,10 @@ class _CompanyCultureSection extends ConsumerWidget {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+
+        // CQC KLOE Scores: Well-Led & Caring
+        const _CqcKloeCard(),
         const SizedBox(height: 16),
 
         // Values by day + Recognition Gaps
@@ -1507,15 +1679,27 @@ class _RecognitionGapsCard extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Row(
                             children: [
-                              _avatar(g.name, g.profilePhotoBase64,
-                                  radius: 16),
+                              GestureDetector(
+                                onTap: () => _showStaffProfile(
+                                  context, g.uid, g.name,
+                                  role: g.role,
+                                  photoBase64: g.profilePhotoBase64),
+                                child: _avatar(g.name, g.profilePhotoBase64,
+                                    radius: 16),
+                              ),
                               const SizedBox(width: 10),
                               Expanded(
-                                child: Text(g.name,
+                                child: GestureDetector(
+                                  onTap: () => _showStaffProfile(
+                                    context, g.uid, g.name,
+                                    role: g.role,
+                                    photoBase64: g.profilePhotoBase64),
+                                  child: Text(g.name,
                                     style: _inter(13,
                                         weight: FontWeight.w500,
                                         color:
                                             const Color(0xFF111827))),
+                                ),
                               ),
                               ElevatedButton(
                                 onPressed: () => showDialog(
@@ -1600,6 +1784,300 @@ final cqcReportDataProvider = FutureProvider<CqcReportData>((ref) async {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// STAFF PROFILE DIALOG
+// ═══════════════════════════════════════════════════════════════
+
+void _showStaffProfile(BuildContext context, String uid, String name,
+    {String? role, String? photoBase64}) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black54,
+    builder: (_) => _StaffProfileDialog(
+      uid: uid,
+      name: name,
+      role: role,
+      photoBase64: photoBase64,
+    ),
+  );
+}
+
+class _StaffProfileDialog extends ConsumerStatefulWidget {
+  final String uid;
+  final String name;
+  final String? role;
+  final String? photoBase64;
+
+  const _StaffProfileDialog({
+    required this.uid,
+    required this.name,
+    this.role,
+    this.photoBase64,
+  });
+
+  @override
+  ConsumerState<_StaffProfileDialog> createState() => _StaffProfileDialogState();
+}
+
+class _StaffProfileDialogState extends ConsumerState<_StaffProfileDialog> {
+  Map<String, dynamic>? _userData;
+  List<Map<String, dynamic>> _recentPosts = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection(AppConstants.usersCollection)
+          .doc(widget.uid)
+          .get();
+
+      final postsSnap = await FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .where('authorId', isEqualTo: widget.uid)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      final posts = postsSnap.docs.map((d) => d.data()).toList();
+      posts.sort((a, b) {
+        final at = (a['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+        final bt = (b['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+        return bt.compareTo(at);
+      });
+
+      if (mounted) {
+        setState(() {
+          _userData = userDoc.data();
+          _recentPosts = posts.take(3).toList();
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[WebManager] Failed to load user profile: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _displayRole(String? role) {
+    switch (role) {
+      case 'care_worker': return 'Care Worker';
+      case 'senior_carer': return 'Senior Carer';
+      case 'manager': return 'Manager';
+      case 'admin': return 'Admin';
+      default: return role ?? 'Staff';
+    }
+  }
+
+  String _timeAgo(Timestamp? ts) {
+    if (ts == null) return '';
+    final diff = DateTime.now().difference(ts.toDate());
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    return '${diff.inMinutes}m ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalStars = _userData?['totalStars'] as int? ?? 0;
+    final starsThisMonth = _userData?['starsThisMonth'] as int? ?? 0;
+    final role = _userData?['role'] as String? ?? widget.role;
+    final photoB64 = _userData?['profilePhotoBase64'] as String? ?? widget.photoBase64;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E3A8A),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                children: [
+                  _avatar(widget.name, photoB64, radius: 26),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.name,
+                            style: _inter(16,
+                                weight: FontWeight.w700, color: Colors.white)),
+                        const SizedBox(height: 2),
+                        Text(_displayRole(role),
+                            style: _inter(13, color: Colors.white70)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.all(40),
+                child: CircularProgressIndicator(),
+              )
+            else ...[
+              // ── Stats row ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: Row(
+                  children: [
+                    _profileStat('Total Stars', '$totalStars',
+                        Icons.star_rounded, const Color(0xFFF59E0B)),
+                    const SizedBox(width: 12),
+                    _profileStat('This Month', '$starsThisMonth',
+                        Icons.calendar_month_outlined, const Color(0xFF3B82F6)),
+                    const SizedBox(width: 12),
+                    _profileStat('Posts', '${_recentPosts.length}+',
+                        Icons.article_outlined, const Color(0xFF10B981)),
+                  ],
+                ),
+              ),
+
+              // ── Recent posts ──
+              if (_recentPosts.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Recent Posts',
+                        style: _inter(13,
+                            weight: FontWeight.w600,
+                            color: const Color(0xFF374151))),
+                  ),
+                ),
+                ...(_recentPosts.map((post) => Container(
+                      margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  post['category'] ?? 'General',
+                                  style: _inter(11,
+                                      weight: FontWeight.w500,
+                                      color: const Color(0xFF1E3A8A)),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                _timeAgo(post['createdAt'] as Timestamp?),
+                                style: _inter(11, color: const Color(0xFF9CA3AF)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            post['content'] ?? '',
+                            style: _inter(12.5, color: const Color(0xFF374151)),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ))),
+              ] else
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Text('No active posts yet.',
+                      style: _inter(13, color: const Color(0xFF9CA3AF))),
+                ),
+
+              // ── Give Kudos button ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      showDialog(
+                        context: context,
+                        barrierColor: Colors.black54,
+                        builder: (_) => _QuickRecognitionDialog(
+                          preselectedUid: widget.uid,
+                          preselectedName: widget.name,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.star_rounded, size: 18),
+                    label: Text('Give Kudos',
+                        style: _inter(14,
+                            weight: FontWeight.w600, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF59E0B),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _profileStat(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(height: 4),
+            Text(value,
+                style: _inter(18,
+                    weight: FontWeight.w700, color: const Color(0xFF111827))),
+            const SizedBox(height: 2),
+            Text(label,
+                style: _inter(11, color: const Color(0xFF6B7280)),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // QUICK RECOGNITION DIALOG
 // ═══════════════════════════════════════════════════════════════
 
@@ -1682,7 +2160,8 @@ class _QuickRecognitionDialogState
           .take(8)
           .toList();
       if (mounted) setState(() { _results = results; _searching = false; });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[WebManager] Staff search failed: $e');
       if (mounted) setState(() { _results = []; _searching = false; });
     }
   }
@@ -2158,4 +2637,218 @@ class _StaffSearchResult {
       required this.name,
       required this.role,
       this.photo});
+}
+
+// ═══════════════════════════════════════════════════════
+// CQC KLOE SCORES CARD
+// ═══════════════════════════════════════════════════════
+
+class _CqcKloeCard extends ConsumerWidget {
+  const _CqcKloeCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final kloe = ref.watch(cqcKloeScoresProvider);
+
+    return kloe.when(
+      data: (data) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('CQC KLOE Scores',
+                style: _inter(16,
+                    weight: FontWeight.w700,
+                    color: const Color(0xFF111827))),
+            const SizedBox(height: 4),
+            Text('Auto-calculated from recognition data',
+                style: _inter(13, color: const Color(0xFF6B7280))),
+            const SizedBox(height: 20),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _WebKloeGauge(
+                    title: 'Well-Led',
+                    score: data.wellLedScore,
+                    color: const Color(0xFF1E3A8A),
+                    metrics: {
+                      'Staff Participation': '${data.staffParticipationRate.toStringAsFixed(0)}%',
+                      'Manager Engagement': '${data.managerEngagementRate.toStringAsFixed(0)}%',
+                      'Recognition Frequency': '${data.recognitionFrequency.toStringAsFixed(0)}%',
+                      'Values Alignment': '${data.valuesAlignmentPercent.toStringAsFixed(0)}%',
+                    },
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: _WebKloeGauge(
+                    title: 'Caring',
+                    score: data.caringScore,
+                    color: const Color(0xFF16A34A),
+                    metrics: {
+                      'Compassion Tags': '${data.compassionTagPercent.toStringAsFixed(0)}%',
+                      'Peer Recognition': '${data.peerRecognitionRate.toStringAsFixed(0)}%',
+                      'Stars per Staff': data.recognitionPerStaff.toStringAsFixed(1),
+                      'Morale Consistency': '${data.moraleTrendScore.toStringAsFixed(0)}%',
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      loading: () => const SizedBox(
+          height: 200, child: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Text('Failed to load CQC KLOE scores',
+            style: _inter(13, color: const Color(0xFFDC2626))),
+      ),
+    );
+  }
+}
+
+class _WebKloeGauge extends StatelessWidget {
+  final String title;
+  final double score;
+  final Color color;
+  final Map<String, String> metrics;
+
+  const _WebKloeGauge({
+    required this.title,
+    required this.score,
+    required this.color,
+    required this.metrics,
+  });
+
+  String get _rating {
+    if (score >= 80) return 'Outstanding';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Requires Improvement';
+    return 'Inadequate';
+  }
+
+  Color get _ratingColor {
+    if (score >= 80) return const Color(0xFF16A34A);
+    if (score >= 60) return const Color(0xFF2563EB);
+    if (score >= 40) return const Color(0xFFF59E0B);
+    return const Color(0xFFDC2626);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final normalised = (score / 100).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        children: [
+          Text(title,
+              style: _inter(15, weight: FontWeight.w700, color: color)),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 110,
+            width: 110,
+            child: CustomPaint(
+              painter: _WebKloeGaugePainter(normalised, color),
+              child: Center(
+                child: Text('${score.toInt()}',
+                    style: GoogleFonts.inter(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: color)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: _ratingColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(_rating,
+                style: _inter(11,
+                    weight: FontWeight.w600, color: _ratingColor)),
+          ),
+          const SizedBox(height: 14),
+          ...metrics.entries.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(e.key,
+                        style: _inter(12, color: const Color(0xFF6B7280))),
+                    Text(e.value,
+                        style: _inter(12,
+                            weight: FontWeight.w600, color: color)),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+class _WebKloeGaugePainter extends CustomPainter {
+  final double fraction;
+  final Color color;
+
+  _WebKloeGaugePainter(this.fraction, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 10;
+    const startAngle = 2.4;
+    const sweepAngle = 4.0;
+
+    final bgPaint = Paint()
+      ..color = color.withValues(alpha: 0.1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      bgPaint,
+    );
+
+    final valuePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle * fraction,
+      false,
+      valuePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _WebKloeGaugePainter old) =>
+      old.fraction != fraction || old.color != color;
 }

@@ -11,6 +11,7 @@ import '../../../core/auth/permissions_provider.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/providers/notification_provider.dart';
 import '../../../core/utils/constants.dart';
+import '../../../core/utils/report_service.dart';
 import 'providers/manager_dashboard_provider.dart';
 import 'widgets/quick_recognition_sheet.dart';
 import 'widgets/edit_company_values_dialog.dart';
@@ -51,6 +52,7 @@ class _ManagerDashboardScreenState
     ref.invalidate(moraleTrendProvider);
     ref.invalidate(cultureHealthProvider);
     ref.invalidate(cqcReportProvider);
+    ref.invalidate(cqcKloeScoresProvider);
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
@@ -198,6 +200,8 @@ class _ManagerDashboardScreenState
                       _buildMoraleTrendSection(),
                       const SizedBox(height: 24),
                       _buildCultureHealthSection(),
+                      const SizedBox(height: 24),
+                      _buildCqcKloeSection(),
                       const SizedBox(height: 24),
                       _buildRecognitionGapsSection(),
                       const SizedBox(height: 24),
@@ -804,14 +808,21 @@ class _ManagerDashboardScreenState
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // TODO: generate full report
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Report generation coming soon')),
+                  final team = ref.read(teamRecognitionProvider).valueOrNull ?? [];
+                  ReportService.exportCqcReport(
+                    monthlyValuesDistribution: data.monthlyValuesDistribution,
+                    taggedRecognitions: data.taggedRecognitions,
+                    valuesAlignmentTrend: data.valuesAlignmentTrend,
+                    teamMembers: team.map((m) => {
+                      'name': m.name,
+                      'role': 'Care Worker',
+                      'stars': '${m.totalStars}',
+                      'status': 'Active',
+                    }).toList(),
                   );
                 },
-                icon: const Icon(Icons.check, size: 18),
-                label: const Text('Approve'),
+                icon: const Icon(Icons.picture_as_pdf, size: 18),
+                label: const Text('Generate Report'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -1112,6 +1123,76 @@ class _ManagerDashboardScreenState
           _ErrorCard(message: 'Failed to load culture health score'),
     );
   }
+
+  // ═══════════════════════════════════════════════════
+  // CQC KLOE SCORES: "Well-Led" & "Caring"
+  // ═══════════════════════════════════════════════════
+
+  Widget _buildCqcKloeSection() {
+    final kloe = ref.watch(cqcKloeScoresProvider);
+
+    return kloe.when(
+      data: (data) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppRadius.allXl,
+          border: Border.all(color: AppColors.borderLight),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('CQC KLOE Scores',
+                style: AppTypography.headingH5
+                    .copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text('Auto-calculated from recognition data',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.3)),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _KloeGaugeCard(
+                    title: 'Well-Led',
+                    score: data.wellLedScore,
+                    color: const Color(0xFF1E3A8A),
+                    metrics: [
+                      _KloeMetric('Staff Participation', '${data.staffParticipationRate.toStringAsFixed(0)}%'),
+                      _KloeMetric('Manager Engagement', '${data.managerEngagementRate.toStringAsFixed(0)}%'),
+                      _KloeMetric('Recognition Frequency', '${data.recognitionFrequency.toStringAsFixed(0)}%'),
+                      _KloeMetric('Values Alignment', '${data.valuesAlignmentPercent.toStringAsFixed(0)}%'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _KloeGaugeCard(
+                    title: 'Caring',
+                    score: data.caringScore,
+                    color: const Color(0xFF16A34A),
+                    metrics: [
+                      _KloeMetric('Compassion Tags', '${data.compassionTagPercent.toStringAsFixed(0)}%'),
+                      _KloeMetric('Peer Recognition', '${data.peerRecognitionRate.toStringAsFixed(0)}%'),
+                      _KloeMetric('Stars per Staff', data.recognitionPerStaff.toStringAsFixed(1)),
+                      _KloeMetric('Morale Consistency', '${data.moraleTrendScore.toStringAsFixed(0)}%'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      loading: () =>
+          const SizedBox(height: 280, child: Center(child: CircularProgressIndicator())),
+      error: (e, _) =>
+          _ErrorCard(message: 'Failed to load CQC KLOE scores'),
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1377,97 +1458,94 @@ class _ReviewCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // ── Three buttons: Reject + Request Edits + Approve ──
-          // Request Edits button (full width, for GDPR-flagged posts or any post)
-          if (post.hasGdprFlag) ...[
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final reason = await _showReasonDialog(
-                    context,
-                    title: 'Request Edits',
-                    hintText: 'What should the carer change?',
-                    isRequired: true,
-                  );
-                  if (reason == null || reason.isEmpty) return;
-                  try {
-                    await requestEditPost(
-                      post.postId,
-                      ref.read(currentUserProvider)?.uid ?? '',
-                      reason: reason,
-                    );
-                    ref.invalidate(pendingPostsProvider);
-                    ref.invalidate(dashboardStatsProvider);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Edit request sent to carer')),
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text('Failed to request edits: \$e')),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.edit_outlined, size: 15),
-                label: const Text('Request Edits',
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFEA580C),
-                  side: const BorderSide(color: Color(0xFFFED7AA)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
+          // ── Three buttons: Delete + Deactivate + Activate ──
           Row(
             children: [
-              // Reject button
+              // Delete button
+              SizedBox(
+                height: 44,
+                child: OutlinedButton(
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.allXl),
+                        title: const Text('Delete Post'),
+                        content: const Text(
+                            'This will permanently delete the post. This cannot be undone.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDC2626),
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed != true) return;
+                    try {
+                      await deletePost(
+                        post.postId,
+                        ref.read(currentUserProvider)?.uid ?? '',
+                      );
+                      ref.invalidate(pendingPostsProvider);
+                      ref.invalidate(dashboardStatsProvider);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Post deleted')),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to delete: $e')),
+                        );
+                      }
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFDC2626),
+                    side: const BorderSide(color: Color(0xFFFCA5A5)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Icon(Icons.delete_outline, size: 18),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Deactivate button
               Expanded(
                 child: SizedBox(
-                  height: 48,
+                  height: 44,
                   child: OutlinedButton(
                     onPressed: () async {
-                      final reason = await _showReasonDialog(
-                        context,
-                        title: post.hasGdprFlag
-                            ? 'Reject \u2013 GDPR Violation'
-                            : 'Reject Post',
-                        hintText: post.hasGdprFlag
-                            ? 'Explain the GDPR violation\u2026'
-                            : 'Reason for rejection (optional)',
-                        isRequired: post.hasGdprFlag,
-                      );
-                      if (reason == null) return;
                       try {
-                        await rejectPost(
+                        await deactivatePost(
                           post.postId,
                           ref.read(currentUserProvider)?.uid ?? '',
-                          reason: reason.isEmpty ? null : reason,
                         );
                         ref.invalidate(pendingPostsProvider);
                         ref.invalidate(dashboardStatsProvider);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Post rejected')),
+                            const SnackBar(content: Text('Post deactivated')),
                           );
                         }
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to reject: \$e')),
+                            SnackBar(
+                                content: Text('Failed to deactivate: $e')),
                           );
                         }
                       }
@@ -1480,36 +1558,37 @@ class _ReviewCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text('Reject',
+                    child: const Text('Deactivate',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                         )),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              // Approve button
+              const SizedBox(width: 8),
+              // Activate button
               Expanded(
                 child: SizedBox(
-                  height: 48,
+                  height: 44,
                   child: ElevatedButton(
                     onPressed: () async {
                       try {
-                        await approvePost(
+                        await activatePost(
                             post.postId,
                             ref.read(currentUserProvider)?.uid ?? '');
                         ref.invalidate(pendingPostsProvider);
                         ref.invalidate(dashboardStatsProvider);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Post approved')),
+                            const SnackBar(content: Text('Post activated')),
                           );
                         }
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to approve: \$e')),
+                            SnackBar(
+                                content: Text('Failed to activate: $e')),
                           );
                         }
                       }
@@ -1523,9 +1602,9 @@ class _ReviewCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text('Approve',
+                    child: const Text('Activate',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         )),
                   ),
@@ -2107,7 +2186,33 @@ class _ValuesBarChart extends StatelessWidget {
             BarChartData(
               alignment: BarChartAlignment.spaceAround,
               maxY: _maxY(),
-              barTouchData: BarTouchData(enabled: false),
+              barTouchData: BarTouchData(
+                enabled: true,
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipColor: (_) => const Color(0xFF1A1A2E),
+                  tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  tooltipBorderRadius: BorderRadius.circular(8),
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    final dayData = data.byDay[days[group.x]] ?? {};
+                    final lines = <TextSpan>[];
+                    for (int i = 0; i < values.length; i++) {
+                      final count = dayData[values[i]] ?? 0;
+                      if (count > 0) {
+                        lines.add(TextSpan(
+                          text: '${i > 0 ? '\n' : ''}${values[i]}: $count',
+                          style: TextStyle(
+                            color: colors[i],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                          ),
+                        ));
+                      }
+                    }
+                    if (lines.isEmpty) return null;
+                    return BarTooltipItem('', const TextStyle(), children: lines);
+                  },
+                ),
+              ),
               titlesData: FlTitlesData(
                 show: true,
                 bottomTitles: AxisTitles(
@@ -2421,4 +2526,158 @@ class _GaugePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _GaugePainter old) => old.fraction != fraction;
+}
+
+// ═══════════════════════════════════════════════════════
+// CQC KLOE GAUGE WIDGETS
+// ═══════════════════════════════════════════════════════
+
+class _KloeMetric {
+  final String label;
+  final String value;
+  const _KloeMetric(this.label, this.value);
+}
+
+class _KloeGaugeCard extends StatelessWidget {
+  final String title;
+  final double score;
+  final Color color;
+  final List<_KloeMetric> metrics;
+
+  const _KloeGaugeCard({
+    required this.title,
+    required this.score,
+    required this.color,
+    required this.metrics,
+  });
+
+  String get _rating {
+    if (score >= 80) return 'Outstanding';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Requires Improvement';
+    return 'Inadequate';
+  }
+
+  Color get _ratingColor {
+    if (score >= 80) return const Color(0xFF16A34A);
+    if (score >= 60) return const Color(0xFF2563EB);
+    if (score >= 40) return const Color(0xFFF59E0B);
+    return const Color(0xFFDC2626);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final normalised = (score / 100).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        children: [
+          Text(title,
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: color)),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 100,
+            width: 100,
+            child: CustomPaint(
+              painter: _KloeGaugePainter(normalised, color),
+              child: Center(
+                child: Text('${score.toInt()}',
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: color)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: _ratingColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(_rating,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _ratingColor)),
+          ),
+          const SizedBox(height: 12),
+          ...metrics.map((m) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(m.label,
+                          style: const TextStyle(
+                              fontSize: 11, color: Color(0xFF6B7280)),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    Text(m.value,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: color)),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+class _KloeGaugePainter extends CustomPainter {
+  final double fraction;
+  final Color color;
+
+  _KloeGaugePainter(this.fraction, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = min(size.width, size.height) / 2 - 8;
+    const startAngle = 2.4;
+    const sweepAngle = 4.0;
+
+    final bgPaint = Paint()
+      ..color = color.withValues(alpha: 0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      bgPaint,
+    );
+
+    final valuePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle * fraction,
+      false,
+      valuePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _KloeGaugePainter old) =>
+      old.fraction != fraction || old.color != color;
 }
