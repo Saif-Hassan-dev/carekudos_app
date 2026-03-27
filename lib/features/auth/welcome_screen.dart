@@ -129,7 +129,6 @@ class WelcomeScreen extends StatelessWidget {
               
               const SizedBox(height: 16),
 
-              // Already have an account link
               GestureDetector(
                 onTap: () => context.go('/login'),
                 child: RichText(
