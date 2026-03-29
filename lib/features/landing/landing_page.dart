@@ -524,7 +524,7 @@ class _HeroRight extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(28),
                   child: Image.asset(
-                    'assets/images/iMockup - iPhone 15 Pro Max.png',
+                    'assets/images/imockup_iphone_15_pro_max.png',
                     height: iphoneHeight,
                     fit: BoxFit.contain,
                   ),
@@ -945,26 +945,26 @@ class _FeatureCard extends StatefulWidget {
   factory _FeatureCard.frontlineFirst() => const _FeatureCard(
         title: 'Frontline First',
         description: 'Mobile app designed for busy shifts.',
-        imagePath: 'assets/images/frontline first.png',
+        imagePath: 'assets/images/frontline_first.png',
       );
 
   factory _FeatureCard.regulatoryMapping() => const _FeatureCard(
         title: 'Regulatory Mapping',
         description:
             'Everything you need to manage culture and compliance in one view.',
-        imagePath: 'assets/images/regulatory mapping.png',
+        imagePath: 'assets/images/regulatory_mapping.png',
       );
 
   factory _FeatureCard.meaningfulRewards() => const _FeatureCard(
         title: 'Meaningful Rewards',
         description: 'From vouchers to extra leave.',
-        imagePath: 'assets/images/meaningful rewards.png',
+        imagePath: 'assets/images/meaningful_rewards.png',
       );
 
   factory _FeatureCard.engagementAnalytics() => const _FeatureCard(
         title: 'Engagement Analytics',
         description: 'Track engagement analytics through our dashboard.',
-        imagePath: 'assets/images/engagement analytics.png',
+        imagePath: 'assets/images/engagement_analytics.png',
       );
 
   @override
@@ -1080,7 +1080,7 @@ class _StarStorySection extends StatelessWidget {
           const SizedBox(height: 64),
           // Star icon from meaningful rewards asset
           Image.asset(
-            'assets/images/meaningful rewards.png',
+            'assets/images/meaningful_rewards.png',
             height: 56,
             fit: BoxFit.contain,
           ),
@@ -2439,7 +2439,7 @@ class _PricingSection extends StatelessWidget {
       child: Row(
         children: [
           Image.asset(
-            isLight ? 'assets/images/white tick.png' : 'assets/images/blue tick.png',
+            isLight ? 'assets/images/white_tick.png' : 'assets/images/blue_tick.png',
             width: 20,
             height: 20,
           ),

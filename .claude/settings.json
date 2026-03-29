@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mv \"blue tick.png\" \"blue_tick.png\")",
+      "Bash(mv \"engagement analytics.png\" \"engagement_analytics.png\")",
+      "Bash(mv \"frontline first.png\" \"frontline_first.png\")",
+      "Bash(mv \"iMockup - iPhone 15 Pro Max.png\" \"imockup_iphone_15_pro_max.png\")",
+      "Bash(mv \"meaningful rewards.png\" \"meaningful_rewards.png\")",
+      "Bash(for n:*)",
+      "Bash(do)",
+      "Bash(mv \"CareKudos \\($n\\)\" \"carekudos_$n\")",
+      "Bash(echo \"Renamed CareKudos \\($n\\) -> carekudos_$n\")",
+      "Bash(done)",
+      "Bash(find lib:*)"
+    ]
+  }
+}

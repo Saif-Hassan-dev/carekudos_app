@@ -40,7 +40,7 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   _SettingsCard(
                     iconPath:
-                        'assets/icons/CareKudos (12)/vuesax/twotone/profile-circle.png',
+                        'assets/icons/carekudos_12/vuesax/twotone/profile-circle.png',
                     title: 'Account',
                     subtitle: 'Personal and account details',
                     onTap: () => context.push('/settings/account'),
@@ -48,7 +48,7 @@ class SettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _SettingsCard(
                     iconPath:
-                        'assets/icons/CareKudos (13)/vuesax/twotone/shield-security.png',
+                        'assets/icons/carekudos_13/vuesax/twotone/shield-security.png',
                     title: 'Privacy & GDPR',
                     subtitle: 'Data, consent, and privacy',
                     onTap: () => context.push('/settings/privacy'),
@@ -56,7 +56,7 @@ class SettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _SettingsCard(
                     iconPath:
-                        'assets/icons/CareKudos (13)/vuesax/twotone/shield-security.png',
+                        'assets/icons/carekudos_13/vuesax/twotone/shield-security.png',
                     title: 'GDPR Posting Guide',
                     subtitle: 'Golden rules for safe posting',
                     onTap: () => context.push('/gdpr-guidelines'),
@@ -64,7 +64,7 @@ class SettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _SettingsCard(
                     iconPath:
-                        'assets/icons/CareKudos (13)/vuesax/twotone/shield-security.png',
+                        'assets/icons/carekudos_13/vuesax/twotone/shield-security.png',
                     title: 'Training Library',
                     subtitle: 'Access your training modules',
                     onTap: () => context.push('/training'),
@@ -72,7 +72,7 @@ class SettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _SettingsCard(
                     iconPath:
-                        'assets/icons/CareKudos (16)/vuesax/twotone/notification.png',
+                        'assets/icons/carekudos_16/vuesax/twotone/notification.png',
                     title: 'Notifications',
                     subtitle: 'Manage notification preferences',
                     onTap: () => context.push('/settings/notifications'),
@@ -80,7 +80,7 @@ class SettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _SettingsCard(
                     iconPath:
-                        'assets/icons/CareKudos (15)/vuesax/twotone/24-support.png',
+                        'assets/icons/carekudos_15/vuesax/twotone/24-support.png',
                     title: 'Help & Support',
                     subtitle: 'Get help and support',
                     onTap: () => context.push('/settings/help'),
@@ -107,7 +107,7 @@ class SettingsScreen extends ConsumerWidget {
                     }
                   },
                   icon: Image.asset(
-                    'assets/icons/CareKudos (12)/vuesax/twotone/logout.png',
+                    'assets/icons/carekudos_12/vuesax/twotone/logout.png',
                     width: 20,
                     height: 20,
                     color: Colors.white,
