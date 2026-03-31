@@ -564,12 +564,17 @@ class _NeedsReviewPanelState extends ConsumerState<_NeedsReviewPanel> {
       });
     }
     try {
+      final orgId = ref.read(userProfileProvider).value?.organizationId;
       final snap = await FirebaseFirestore.instance
           .collection(AppConstants.postsCollection)
           .where('approvalStatus', isEqualTo: 'pending')
           .get();
 
-      final all = snap.docs.map((doc) {
+      final orgDocs = (orgId != null && orgId.isNotEmpty)
+          ? snap.docs.where((d) => d.data()['organizationId'] == orgId).toList()
+          : snap.docs;
+
+      final all = orgDocs.map((doc) {
         final data = doc.data();
         return PendingPost(
           postId: doc.id,
@@ -1745,6 +1750,7 @@ class _RecognitionGapsCard extends ConsumerWidget {
 // ═══════════════════════════════════════════════════════════════
 
 final cqcReportDataProvider = FutureProvider<CqcReportData>((ref) async {
+  final orgId = ref.read(userProfileProvider).value?.organizationId;
   final now = DateTime.now();
   final startOfMonth = DateTime(now.year, now.month, 1);
 
@@ -1753,11 +1759,15 @@ final cqcReportDataProvider = FutureProvider<CqcReportData>((ref) async {
       .where('approvalStatus', isEqualTo: 'approved')
       .get();
 
+  final orgDocs = (orgId != null && orgId.isNotEmpty)
+      ? snap.docs.where((d) => d.data()['organizationId'] == orgId).toList()
+      : snap.docs;
+
   int tagged = 0;
   int prevMonth = 0;
   int thisMonth = 0;
 
-  for (final doc in snap.docs) {
+  for (final doc in orgDocs) {
     final data = doc.data();
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()

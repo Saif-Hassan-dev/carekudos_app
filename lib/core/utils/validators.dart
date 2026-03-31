@@ -78,6 +78,23 @@ class Validators {
     return null;
   }
 
+  // Phone number validation
+  static String? validatePhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Phone number is required';
+    }
+
+    // Remove spaces, dashes, and parentheses for validation
+    final cleaned = value.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+
+    // Accept UK formats: 07xxx, +447xxx, 01xxx, 02xxx, 03xxx, or international +xxx
+    if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(cleaned)) {
+      return 'Please enter a valid phone number';
+    }
+
+    return null;
+  }
+
   // Organization code validation
   static String? validateOrgCode(String? value) {
     if (value == null || value.isEmpty) {

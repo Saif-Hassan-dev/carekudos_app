@@ -82,6 +82,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
         _firstNameController.text = profile.firstName;
         _lastNameController.text = profile.lastName;
         _emailController.text = profile.email;
+        _phoneController.text = profile.phone ?? '';
       }
     });
   }

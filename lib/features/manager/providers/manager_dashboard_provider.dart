@@ -196,8 +196,25 @@ final companyValuesProvider = Provider<List<String>>((ref) {
   );
 });
 
+/// Helper: get current user's organizationId
+String? _getOrgId(Ref ref) {
+  return ref.read(userProfileProvider).value?.organizationId;
+}
+
+/// Helper: filter docs to only those matching the org
+List<QueryDocumentSnapshot<Map<String, dynamic>>> _filterByOrg(
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  String? orgId,
+) {
+  if (orgId == null || orgId.isEmpty) return docs;
+  return docs
+      .where((d) => d.data()['organizationId'] == orgId)
+      .toList();
+}
+
 /// Dashboard stats (pending, GDPR flags, active staff, weekly recognitions)
 final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final startOfDay = DateTime(now.year, now.month, now.day);
   final startOfWeek = startOfDay.subtract(Duration(days: now.weekday - 1));
@@ -213,8 +230,8 @@ final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
       .get();
 
   final results = await Future.wait([pendingFuture, recentFuture]);
-  final pendingDocs = results[0].docs;
-  final recentDocs = results[1].docs;
+  final pendingDocs = _filterByOrg(results[0].docs, orgId);
+  final recentDocs = _filterByOrg(results[1].docs, orgId);
 
   int pendingReviews = pendingDocs.length;
   int gdprFlags = pendingDocs.where((d) => d.data()['gdprFlagged'] == true).length;
@@ -237,7 +254,7 @@ final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
     }
   }
 
-  // Total staff count as fallback
+  // Total staff count as fallback — filter by org
   int activeStaff = activeStaffIds.length;
   if (activeStaff == 0) {
     final allStaffSnap = await _firestore
@@ -245,8 +262,11 @@ final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
         .get();
     activeStaff = allStaffSnap.docs
         .where((d) {
-          final role = d.data()['role'] as String?;
-          return role == 'care_worker' || role == 'senior_carer' || role == 'manager';
+          final data = d.data();
+          final role = data['role'] as String?;
+          final userOrg = data['organizationId'] as String?;
+          final orgMatch = orgId == null || orgId.isEmpty || userOrg == orgId;
+          return orgMatch && (role == 'care_worker' || role == 'senior_carer' || role == 'manager');
         })
         .length;
   }
@@ -261,12 +281,14 @@ final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
 
 /// Pending posts for review
 final pendingPostsProvider = FutureProvider<List<PendingPost>>((ref) async {
+  final orgId = _getOrgId(ref);
   final snap = await _firestore
       .collection(AppConstants.postsCollection)
       .where('approvalStatus', isEqualTo: 'pending')
       .get();
 
-  final posts = snap.docs.map((doc) {
+  final filteredDocs = _filterByOrg(snap.docs, orgId);
+  final posts = filteredDocs.map((doc) {
     final data = doc.data();
     return PendingPost(
       postId: doc.id,
@@ -290,6 +312,7 @@ final pendingPostsProvider = FutureProvider<List<PendingPost>>((ref) async {
 /// Core values stats
 final coreValuesStatsProvider =
     FutureProvider<List<CoreValueStat>>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final startOfWeek =
       DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
@@ -299,13 +322,14 @@ final coreValuesStatsProvider =
       .collection(AppConstants.postsCollection)
       .where('approvalStatus', isEqualTo: 'approved')
       .get();
+  final orgDocs = _filterByOrg(snap.docs, orgId);
 
   final activeValues = ref.read(companyValuesProvider);
   final counts = <String, int>{};
   for (final value in activeValues) {
     counts[value] = 0;
   }
-  for (final doc in snap.docs) {
+  for (final doc in orgDocs) {
     final data = doc.data();
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
@@ -330,6 +354,7 @@ final coreValuesStatsProvider =
 
 /// Rising stars (top performers last 60 days)
 final risingStarsProvider = FutureProvider<List<RisingStar>>((ref) async {
+  final orgId = _getOrgId(ref);
   final cutoff = DateTime.now().subtract(const Duration(days: 60));
 
   // Single-field query, filter date client-side
@@ -338,8 +363,8 @@ final risingStarsProvider = FutureProvider<List<RisingStar>>((ref) async {
       .where('approvalStatus', isEqualTo: 'approved')
       .get();
 
-  // Filter to last 60 days client-side
-  final recentDocs = postSnap.docs.where((doc) {
+  // Filter to last 60 days and same org client-side
+  final recentDocs = _filterByOrg(postSnap.docs, orgId).where((doc) {
     final data = doc.data();
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
@@ -389,6 +414,7 @@ final risingStarsProvider = FutureProvider<List<RisingStar>>((ref) async {
 
 /// Team recognition list (all staff sorted by stars)
 final teamRecognitionProvider = FutureProvider<List<TeamMember>>((ref) async {
+  final orgId = _getOrgId(ref);
   // Simple query without compound index, sort client-side
   final snap = await _firestore
       .collection(AppConstants.usersCollection)
@@ -396,8 +422,11 @@ final teamRecognitionProvider = FutureProvider<List<TeamMember>>((ref) async {
 
   final members = snap.docs
       .where((doc) {
-        final role = doc.data()['role'] as String?;
-        return role == 'care_worker' || role == 'senior_carer';
+        final data = doc.data();
+        final role = data['role'] as String?;
+        final userOrg = data['organizationId'] as String?;
+        final orgMatch = orgId == null || orgId.isEmpty || userOrg == orgId;
+        return orgMatch && (role == 'care_worker' || role == 'senior_carer');
       })
       .map((doc) {
         final data = doc.data();
@@ -416,12 +445,18 @@ final teamRecognitionProvider = FutureProvider<List<TeamMember>>((ref) async {
 
 /// Top Value Champions (highest recognition scorers)
 final topValueChampionsProvider = FutureProvider<List<TeamMember>>((ref) async {
+  final orgId = _getOrgId(ref);
   // Fetch all, sort client-side to avoid index requirement
   final snap = await _firestore
       .collection(AppConstants.usersCollection)
       .get();
 
-  final members = snap.docs.map((doc) {
+  final orgUsers = snap.docs.where((doc) {
+    final userOrg = doc.data()['organizationId'] as String?;
+    return orgId == null || orgId.isEmpty || userOrg == orgId;
+  });
+
+  final members = orgUsers.map((doc) {
     final data = doc.data();
     return TeamMember(
       uid: doc.id,
@@ -438,29 +473,35 @@ final topValueChampionsProvider = FutureProvider<List<TeamMember>>((ref) async {
 /// Recognition gaps (staff who received 0 recognitions this week)
 final recognitionGapsProvider =
     FutureProvider<List<RecognitionGap>>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final startOfWeek =
       DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
 
-  // All staff
+  // All staff — filter by org client-side
   final staffSnap = await _firestore
       .collection(AppConstants.usersCollection)
       .where('role', whereIn: ['care_worker', 'senior_carer'])
       .get();
+  final orgStaffDocs = staffSnap.docs.where((d) {
+    final userOrg = d.data()['organizationId'] as String?;
+    return orgId == null || orgId.isEmpty || userOrg == orgId;
+  }).toList();
 
-  // Posts this week – collect unique recipient authors
+  // Posts this week – collect unique recipient authors (filtered by org)
   final weekPostsSnap = await _firestore
       .collection(AppConstants.postsCollection)
       .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfWeek))
       .get();
+  final orgWeekPosts = _filterByOrg(weekPostsSnap.docs, orgId);
 
   final recognisedIds = <String>{};
-  for (final doc in weekPostsSnap.docs) {
+  for (final doc in orgWeekPosts) {
     recognisedIds.add(doc.data()['authorId'] as String? ?? '');
   }
 
   final gaps = <RecognitionGap>[];
-  for (final doc in staffSnap.docs) {
+  for (final doc in orgStaffDocs) {
     if (!recognisedIds.contains(doc.id)) {
       final data = doc.data();
       gaps.add(RecognitionGap(
@@ -477,6 +518,7 @@ final recognitionGapsProvider =
 /// Values distribution by day of week
 final valuesDistributionProvider =
     FutureProvider<ValuesDistribution>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final startOfWeek =
       DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
@@ -486,6 +528,7 @@ final valuesDistributionProvider =
       .collection(AppConstants.postsCollection)
       .where('approvalStatus', isEqualTo: 'approved')
       .get();
+  final orgDocs = _filterByOrg(snap.docs, orgId);
 
   final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   final activeValues = ref.read(companyValuesProvider);
@@ -499,7 +542,7 @@ final valuesDistributionProvider =
     dayCounts[d] = 0;
   }
 
-  for (final doc in snap.docs) {
+  for (final doc in orgDocs) {
     final data = doc.data();
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
@@ -545,6 +588,7 @@ final valuesDistributionProvider =
 /// Morale trend (last 30 days – posts per day as proxy)
 final moraleTrendProvider =
     FutureProvider<List<MoraleTrendPoint>>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final thirtyDaysAgo = now.subtract(const Duration(days: 30));
 
@@ -553,10 +597,11 @@ final moraleTrendProvider =
       .collection(AppConstants.postsCollection)
       .where('approvalStatus', isEqualTo: 'approved')
       .get();
+  final orgDocs = _filterByOrg(snap.docs, orgId);
 
   // Group by day (filter to last 30 days client-side)
   final countByDay = <String, int>{};
-  for (final doc in snap.docs) {
+  for (final doc in orgDocs) {
     final data = doc.data();
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
@@ -581,27 +626,32 @@ final moraleTrendProvider =
 
 /// Culture health score
 final cultureHealthProvider = FutureProvider<CultureHealthData>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final startOfMonth = DateTime(now.year, now.month, 1);
 
-  // All staff (simple fetch, filter client-side)
+  // All staff (simple fetch, filter client-side by org)
   final staffSnap = await _firestore
       .collection(AppConstants.usersCollection)
       .get();
   final totalStaff = staffSnap.docs
       .where((d) {
-        final role = d.data()['role'] as String?;
-        return role == 'care_worker' || role == 'senior_carer' || role == 'manager';
+        final data = d.data();
+        final role = data['role'] as String?;
+        final userOrg = data['organizationId'] as String?;
+        final orgMatch = orgId == null || orgId.isEmpty || userOrg == orgId;
+        return orgMatch && (role == 'care_worker' || role == 'senior_carer' || role == 'manager');
       })
       .length;
   if (totalStaff == 0) {
     return const CultureHealthData(score: 0);
   }
 
-  // All posts (single fetch, filter client-side)
+  // All posts (single fetch, filter client-side by org)
   final allPostsSnap = await _firestore
       .collection(AppConstants.postsCollection)
       .get();
+  final orgPostDocs = _filterByOrg(allPostsSnap.docs, orgId);
 
   // Unique approved authors this month
   final authorIds = <String>{};
@@ -609,7 +659,7 @@ final cultureHealthProvider = FutureProvider<CultureHealthData>((ref) async {
   int flaggedCount = 0;
   int totalPostsThisMonth = 0;
 
-  for (final doc in allPostsSnap.docs) {
+  for (final doc in orgPostDocs) {
     final data = doc.data();
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
@@ -648,6 +698,7 @@ final cultureHealthProvider = FutureProvider<CultureHealthData>((ref) async {
 
 /// CQC Evidence Report data
 final cqcReportProvider = FutureProvider<CqcReportData>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final startOfMonth = DateTime(now.year, now.month, 1);
 
@@ -656,11 +707,12 @@ final cqcReportProvider = FutureProvider<CqcReportData>((ref) async {
       .collection(AppConstants.postsCollection)
       .where('approvalStatus', isEqualTo: 'approved')
       .get();
+  final orgDocs = _filterByOrg(snap.docs, orgId);
 
   // Count posts with category tags (filtered to this month)
   int taggedCount = 0;
   final valueCounts = <String, int>{};
-  for (final doc in snap.docs) {
+  for (final doc in orgDocs) {
     final data = doc.data();
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
@@ -688,28 +740,34 @@ final cqcReportProvider = FutureProvider<CqcReportData>((ref) async {
 
 /// CQC KLOE scores: "Well-Led" & "Caring" auto-calculated
 final cqcKloeScoresProvider = FutureProvider<CqcKloeScores>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final startOfMonth = DateTime(now.year, now.month, 1);
 
-  // Fetch all users
+  // Fetch all users — filter by org
   final usersSnap = await _firestore.collection(AppConstants.usersCollection).get();
-  final allStaff = usersSnap.docs.where((d) {
+  final orgUsers = usersSnap.docs.where((d) {
+    final userOrg = d.data()['organizationId'] as String?;
+    return orgId == null || orgId.isEmpty || userOrg == orgId;
+  }).toList();
+  final allStaff = orgUsers.where((d) {
     final role = d.data()['role'] as String?;
     return role == 'care_worker' || role == 'senior_carer';
   }).toList();
-  final managers = usersSnap.docs.where((d) => d.data()['role'] == 'manager').toList();
+  final managers = orgUsers.where((d) => d.data()['role'] == 'manager').toList();
   final totalStaff = allStaff.length;
   final totalManagers = managers.length;
 
   if (totalStaff == 0) return const CqcKloeScores();
 
-  // Fetch all approved posts
+  // Fetch all approved posts — filter by org
   final postsSnap = await _firestore
       .collection(AppConstants.postsCollection)
       .where('approvalStatus', isEqualTo: 'approved')
       .get();
+  final orgPosts = _filterByOrg(postsSnap.docs, orgId);
 
-  final monthPosts = postsSnap.docs.where((d) {
+  final monthPosts = orgPosts.where((d) {
     final ts = d.data()['createdAt'] as Timestamp?;
     return ts != null && ts.toDate().isAfter(startOfMonth);
   }).toList();
@@ -727,7 +785,7 @@ final cqcKloeScoresProvider = FutureProvider<CqcKloeScores>((ref) async {
     final data = doc.data();
     final authorId = data['authorId'] as String? ?? '';
     final category = data['category'] as String? ?? '';
-    final authorRole = usersSnap.docs
+    final authorRole = orgUsers
         .where((u) => u.id == authorId)
         .firstOrNull
         ?.data()['role'] as String?;

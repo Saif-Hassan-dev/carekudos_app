@@ -74,12 +74,26 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     if (_lastDoc == null || !_hasMore) return;
     setState(() => _loadingMore = true);
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection(AppConstants.postsCollection)
-          .orderBy('createdAt', descending: true)
-          .startAfterDocument(_lastDoc!)
-          .limit(_pageSize)
-          .get();
+      final profile = ref.read(userProfileProvider).value;
+      final user = ref.read(currentUserProvider);
+      final orgId = profile?.organizationId;
+      Query<Map<String, dynamic>> query;
+      if (orgId != null && orgId.isNotEmpty) {
+        query = FirebaseFirestore.instance
+            .collection(AppConstants.postsCollection)
+            .where('organizationId', isEqualTo: orgId)
+            .orderBy('createdAt', descending: true)
+            .startAfterDocument(_lastDoc!)
+            .limit(_pageSize);
+      } else {
+        query = FirebaseFirestore.instance
+            .collection(AppConstants.postsCollection)
+            .where('authorId', isEqualTo: user?.uid)
+            .orderBy('createdAt', descending: true)
+            .startAfterDocument(_lastDoc!)
+            .limit(_pageSize);
+      }
+      final snap = await query.get();
       if (snap.docs.isNotEmpty) {
         _lastDoc = snap.docs.last;
         setState(() {
@@ -340,12 +354,34 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
               // ── Feed List ──
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection(AppConstants.postsCollection)
-                      .orderBy('createdAt', descending: true)
-                      .limit(_pageSize)
-                      .snapshots(),
+                child: userProfile.when(
+                  loading: () => const LoadingView(message: 'Loading feed...'),
+                  error: (e, _) => ErrorView(
+                    title: 'Error Loading Profile',
+                    message: e.toString(),
+                    onRetry: () => ref.invalidate(userProfileProvider),
+                  ),
+                  data: (profile) {
+                    // Build org-filtered query
+                    final orgId = profile?.organizationId;
+                    final Query<Map<String, dynamic>> baseQuery;
+                    if (orgId != null && orgId.isNotEmpty) {
+                      // Show posts from same organisation
+                      baseQuery = FirebaseFirestore.instance
+                          .collection(AppConstants.postsCollection)
+                          .where('organizationId', isEqualTo: orgId)
+                          .orderBy('createdAt', descending: true)
+                          .limit(_pageSize);
+                    } else {
+                      // Solo carer: show only own posts
+                      baseQuery = FirebaseFirestore.instance
+                          .collection(AppConstants.postsCollection)
+                          .where('authorId', isEqualTo: user.uid)
+                          .orderBy('createdAt', descending: true)
+                          .limit(_pageSize);
+                    }
+                    return StreamBuilder<QuerySnapshot>(
+                  stream: baseQuery.snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting &&
                         _allDocs.isEmpty) {
@@ -451,6 +487,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                         },
                       ),
                     );
+                  },
+                );
                   },
                 ),
               ),

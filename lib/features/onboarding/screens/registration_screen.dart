@@ -186,10 +186,11 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   bool get _canSubmit {
     return _firstNameController.text.isNotEmpty &&
         _lastNameController.text.isNotEmpty &&
+        _phoneController.text.isNotEmpty &&
+        _orgCodeController.text.isNotEmpty &&
         _emailController.text.isNotEmpty &&
         _passwordController.text.isNotEmpty &&
         _confirmPasswordController.text.isNotEmpty &&
-        _orgCodeController.text.isNotEmpty &&
         _eligibleToWork &&
         _agreeToTerms &&
         _agreeToGdpr;
@@ -207,8 +208,12 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         password: _passwordController.text,
       );
 
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) throw Exception('User creation failed');
+      final user = FirebaseAuth.instance.currentUser;
+      final userId = user?.uid;
+      if (userId == null || user == null) throw Exception('User creation failed');
+
+      // Send email verification
+      await user.sendEmailVerification();
 
       final onboardingData = ref.read(onboardingProvider);
 
@@ -224,9 +229,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         postcode: _postcodeController.text.trim().isNotEmpty
             ? _postcodeController.text.trim()
             : null,
-        organizationId: _orgCodeController.text.trim().isNotEmpty
-            ? _orgCodeController.text.trim()
-            : null,
+        organizationId: _orgCodeController.text.trim(),
         gdprConsent: _agreeToGdpr,
         dateOfBirth: _dateOfBirth,
         preferredContactMethod: _preferredContactMethod,
@@ -385,9 +388,10 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   _gap,
                   _field(
                       controller: _phoneController,
-                      label: 'Phone number (optional)',
-                      hint: 'Enter phone number',
-                      keyboard: TextInputType.phone),
+                      label: 'Mobile Number',
+                      hint: 'Enter mobile number',
+                      keyboard: TextInputType.phone,
+                      validator: Validators.validatePhone),
                   _gap,
                   _buildDropdownField(),
                 ]),
@@ -412,8 +416,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                     controller: _orgCodeController,
                     label: 'Organization Code',
                     hint: 'Enter organization code',
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Organization code is required' : null,
+                    validator: Validators.validateOrgCode,
                   ),
                   const SizedBox(height: 4),
                   const Text(
@@ -551,26 +554,6 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                     iconBg: const Color(0xFF0A2C6B),
                     text:
                         'Two-factor authentication will be available after registration for enhanced security.',
-                  ),
-                ]),
-                const SizedBox(height: 20),
-
-                // ══════════════════════════════════
-                //  5. ORGANIZATION
-                // ══════════════════════════════════
-                _sectionBox('Organization', [
-                  const SizedBox(height: 18),
-                  _field(
-                    controller: _orgCodeController,
-                    label: 'Organization Code',
-                    hint: 'Enter organization code',
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Organization code is required' : null,
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Provided by your care home manager.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
                   ),
                 ]),
                 const SizedBox(height: 24),

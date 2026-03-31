@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/utils/constants.dart';
+import '../../../core/auth/permissions_provider.dart';
 
 // ═══════════════════════════════════════════════════════════════
 // DATA MODELS
@@ -145,12 +146,29 @@ class AdminNotificationAlert {
 
 final _firestore = FirebaseFirestore.instance;
 
+/// Helper: get current user's organizationId
+String? _getOrgId(Ref ref) {
+  return ref.read(userProfileProvider).value?.organizationId;
+}
+
+/// Helper: filter post docs to only those matching the org
+List<QueryDocumentSnapshot<Map<String, dynamic>>> _filterPostsByOrg(
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  String? orgId,
+) {
+  if (orgId == null || orgId.isEmpty) return docs;
+  return docs
+      .where((d) => d.data()['organizationId'] == orgId)
+      .toList();
+}
+
 // ═══════════════════════════════════════════════════════════════
 // PROVIDERS
 // ═══════════════════════════════════════════════════════════════
 
 /// Stat cards: total users, active today, pending actions, compliance alerts
 final adminStatsProvider = FutureProvider<AdminStats>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final startOfDay = DateTime(now.year, now.month, now.day);
 
@@ -164,23 +182,29 @@ final adminStatsProvider = FutureProvider<AdminStats>((ref) async {
   ]);
 
   final usersSnap = results[0];
-  final pendingSnap = results[1];
-  final todaySnap = results[2];
+  final pendingDocs = _filterPostsByOrg(results[1].docs, orgId);
+  final todayDocs = _filterPostsByOrg(results[2].docs, orgId);
 
-  final totalUsers = usersSnap.docs.length;
+  // Filter users by org
+  final orgUsers = usersSnap.docs.where((d) {
+    final userOrg = d.data()['organizationId'] as String?;
+    return orgId == null || orgId.isEmpty || userOrg == orgId;
+  }).toList();
 
-  int pendingActions = pendingSnap.docs.length;
+  final totalUsers = orgUsers.length;
+
+  int pendingActions = pendingDocs.length;
 
   // Active today = unique authors with posts today
   final activeIds = <String>{};
-  for (final doc in todaySnap.docs) {
+  for (final doc in todayDocs) {
     final authorId = doc.data()['authorId'] as String?;
     if (authorId != null) activeIds.add(authorId);
   }
 
   // Compliance alerts = users with gdprConsentGiven == false OR gdprTrainingCompleted == false
   int complianceAlerts = 0;
-  for (final doc in usersSnap.docs) {
+  for (final doc in orgUsers) {
     final data = doc.data();
     final consent = data['gdprConsentGiven'] == true;
     final training = data['gdprTrainingCompleted'] == true;
@@ -233,6 +257,7 @@ final adminUsersProvider = StreamProvider<List<AdminUser>>((ref) {
 
 /// Engagement & Activity metrics
 final adminEngagementProvider = FutureProvider<AdminEngagement>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final startOfDay = DateTime(now.year, now.month, now.day);
   final startOfMonth = DateTime(now.year, now.month, 1);
@@ -243,14 +268,14 @@ final adminEngagementProvider = FutureProvider<AdminEngagement>((ref) async {
     _firestore.collection('star_history').get(),
   ]);
 
-  final postsSnap = results[0];
+  final orgPosts = _filterPostsByOrg(results[0].docs, orgId);
   final starsSnap = results[1];
 
   // Daily active = unique post authors today
   final dailyActiveIds = <String>{};
   int postsThisMonth = 0;
 
-  for (final doc in postsSnap.docs) {
+  for (final doc in orgPosts) {
     final data = doc.data();
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
@@ -288,10 +313,16 @@ final adminEngagementProvider = FutureProvider<AdminEngagement>((ref) async {
 
 /// Compliance & Training metrics
 final adminComplianceProvider = FutureProvider<AdminCompliance>((ref) async {
+  final orgId = _getOrgId(ref);
   final usersSnap =
       await _firestore.collection(AppConstants.usersCollection).get();
 
-  final total = usersSnap.docs.length;
+  final orgUsers = usersSnap.docs.where((d) {
+    final userOrg = d.data()['organizationId'] as String?;
+    return orgId == null || orgId.isEmpty || userOrg == orgId;
+  }).toList();
+
+  final total = orgUsers.length;
   if (total == 0) {
     return const AdminCompliance();
   }
@@ -300,7 +331,7 @@ final adminComplianceProvider = FutureProvider<AdminCompliance>((ref) async {
   int onboardedCount = 0;
   int nonCompliant = 0;
 
-  for (final doc in usersSnap.docs) {
+  for (final doc in orgUsers) {
     final data = doc.data();
     final consent = data['gdprConsentGiven'] == true;
     final trained = data['gdprTrainingCompleted'] == true;
@@ -321,12 +352,13 @@ final adminComplianceProvider = FutureProvider<AdminCompliance>((ref) async {
 /// Pending posts for moderation queue count
 final adminPendingPostsProvider =
     FutureProvider<List<AdminPendingPost>>((ref) async {
+  final orgId = _getOrgId(ref);
   final snap = await _firestore
       .collection(AppConstants.postsCollection)
       .where('approvalStatus', isEqualTo: 'pending')
       .get();
 
-  final posts = snap.docs.map((doc) {
+  final posts = _filterPostsByOrg(snap.docs, orgId).map((doc) {
     final data = doc.data();
     return AdminPendingPost(
       postId: doc.id,
@@ -575,6 +607,7 @@ class AdminAnalyticsOverview {
 
 final adminAnalyticsOverviewProvider =
     FutureProvider<AdminAnalyticsOverview>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final todayStart = DateTime(now.year, now.month, now.day);
   final yesterdayStart = todayStart.subtract(const Duration(days: 1));
@@ -589,9 +622,13 @@ final adminAnalyticsOverviewProvider =
     _firestore.collection(AppConstants.usersCollection).get(),
   ]);
 
-  final postsSnap = results[0];
+  final orgPosts = _filterPostsByOrg(results[0].docs, orgId);
   final starsSnap = results[1];
-  final totalUsers = results[2].docs.length;
+  final orgUsers = results[2].docs.where((d) {
+    final userOrg = d.data()['organizationId'] as String?;
+    return orgId == null || orgId.isEmpty || userOrg == orgId;
+  }).toList();
+  final totalUsers = orgUsers.length;
 
   final todayIds = <String>{};
   final yesterdayIds = <String>{};
@@ -599,7 +636,7 @@ final adminAnalyticsOverviewProvider =
   final lastMonthIds = <String>{};
   int kudosThisMonth = 0;
 
-  for (final doc in postsSnap.docs) {
+  for (final doc in orgPosts) {
     final d = doc.data();
     final createdAt = (d['createdAt'] as Timestamp?)?.toDate();
     final authorId = d['authorId'] as String?;
@@ -654,6 +691,7 @@ class AdminEngagementChartData {
 
 final adminEngagementChartProvider =
     FutureProvider<AdminEngagementChartData>((ref) async {
+  final orgId = _getOrgId(ref);
   final now = DateTime.now();
   final days = List.generate(9, (i) {
     final d = now.subtract(Duration(days: 8 - i));
@@ -662,6 +700,7 @@ final adminEngagementChartProvider =
 
   final snap =
       await _firestore.collection(AppConstants.postsCollection).get();
+  final orgPosts = _filterPostsByOrg(snap.docs, orgId);
 
   final daily = List<double>.filled(9, 0);
   final monthly = List<double>.filled(9, 0);
@@ -673,7 +712,7 @@ final adminEngagementChartProvider =
     final dIds = <String>{};
     final mIds = <String>{};
 
-    for (final doc in snap.docs) {
+    for (final doc in orgPosts) {
       final d = doc.data();
       final at = (d['createdAt'] as Timestamp?)?.toDate();
       final uid = d['authorId'] as String?;
@@ -859,13 +898,13 @@ class AdminCertAlert {
 
 final adminCertAlertsProvider =
     FutureProvider<List<AdminCertAlert>>((ref) async {
+  final orgId = _getOrgId(ref);
   final snap = await _firestore
       .collection(AppConstants.postsCollection)
       .where('approvalStatus', isEqualTo: 'pending')
-      .limit(5)
       .get();
 
-  return snap.docs.map((doc) {
+  return _filterPostsByOrg(snap.docs, orgId).take(5).map((doc) {
     final d = doc.data();
     final createdAt =
         (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
@@ -1170,12 +1209,17 @@ class AdminModerationPost {
 
 final adminModerationStreamProvider =
     StreamProvider<List<AdminModerationPost>>((ref) {
+  final orgId = _getOrgId(ref);
   return _firestore
       .collection(AppConstants.postsCollection)
       .orderBy('createdAt', descending: true)
       .limit(100)
       .snapshots()
-      .map((snap) => snap.docs.map((doc) {
+      .map((snap) {
+        final docs = orgId != null && orgId.isNotEmpty
+            ? snap.docs.where((d) => d.data()['organizationId'] == orgId)
+            : snap.docs;
+        return docs.map((doc) {
             final data = doc.data();
             return AdminModerationPost(
               postId: doc.id,
@@ -1189,15 +1233,22 @@ final adminModerationStreamProvider =
               createdAt: (data['createdAt'] as Timestamp?)?.toDate() ??
                   DateTime.now(),
             );
-          }).toList());
+          }).toList();
+      });
 });
 
 final adminPendingCountProvider = StreamProvider<int>((ref) {
+  final orgId = _getOrgId(ref);
   return _firestore
       .collection(AppConstants.postsCollection)
       .where('approvalStatus', isEqualTo: 'pending')
       .snapshots()
-      .map((snap) => snap.docs.length);
+      .map((snap) {
+        if (orgId != null && orgId.isNotEmpty) {
+          return snap.docs.where((d) => d.data()['organizationId'] == orgId).length;
+        }
+        return snap.docs.length;
+      });
 });
 
 Future<void> adminApprovePost(String postId) async {
@@ -1478,6 +1529,7 @@ final adminDateRangeProvider = StateProvider<DateTimeRange>((ref) {
 /// Engagement chart filtered by date range
 final adminEngagementChartFilteredProvider =
     FutureProvider<AdminEngagementChartData>((ref) async {
+  final orgId = _getOrgId(ref);
   final range = ref.watch(adminDateRangeProvider);
   final totalDays = range.end.difference(range.start).inDays;
   final buckets = totalDays <= 14 ? totalDays : (totalDays <= 60 ? 10 : 12);
@@ -1488,8 +1540,9 @@ final adminEngagementChartFilteredProvider =
     return DateTime(d.year, d.month, d.day);
   });
 
-  final snap =
+  final rawSnap =
       await _firestore.collection(AppConstants.postsCollection).get();
+  final snap = _filterPostsByOrg(rawSnap.docs, orgId);
 
   final daily = List<double>.filled(buckets, 0);
   final monthly = List<double>.filled(buckets, 0);
@@ -1503,7 +1556,7 @@ final adminEngagementChartFilteredProvider =
     final dIds = <String>{};
     final mIds = <String>{};
 
-    for (final doc in snap.docs) {
+    for (final doc in snap) {
       final d = doc.data();
       final at = (d['createdAt'] as Timestamp?)?.toDate();
       final uid = d['authorId'] as String?;
