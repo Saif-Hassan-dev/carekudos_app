@@ -49,7 +49,7 @@ class NotificationsScreen extends ConsumerWidget {
                       await NotificationService.markAllAsRead(user.uid);
                     },
                     child: Image.asset(
-                      'assets/icons/CareKudos (15)/vuesax/twotone/edit.png',
+                      'assets/icons/carekudos_15/vuesax/twotone/edit.png',
                       width: 24,
                       height: 24,
                       color: AppColors.textSecondary,
@@ -120,7 +120,7 @@ class NotificationsScreen extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Image.asset(
-            'assets/icons/CareKudos (16)/vuesax/twotone/notification.png',
+            'assets/icons/carekudos_16/vuesax/twotone/notification.png',
             width: 80,
             height: 80,
             color: AppColors.neutral300,
@@ -255,22 +255,22 @@ class _NotificationTile extends StatelessWidget {
 
     switch (type) {
       case NotificationType.star:
-        iconPath = 'assets/icons/CareKudos (15)/vuesax/twotone/star.png';
+        iconPath = 'assets/icons/carekudos_15/vuesax/twotone/star.png';
       case NotificationType.achievement:
         iconPath =
-            'assets/icons/CareKudos (15)/vuesax/twotone/medal-star.png';
+            'assets/icons/carekudos_15/vuesax/twotone/medal-star.png';
       case NotificationType.reminder:
         iconPath =
-            'assets/icons/CareKudos (16)/vuesax/twotone/clock.png';
+            'assets/icons/carekudos_16/vuesax/twotone/clock.png';
       case NotificationType.postApproved:
         iconPath =
-            'assets/icons/CareKudos (16)/vuesax/twotone/notification-status.png';
+            'assets/icons/carekudos_16/vuesax/twotone/notification-status.png';
       case NotificationType.milestone:
         iconPath =
-            'assets/icons/CareKudos (15)/vuesax/twotone/magic-star.png';
+            'assets/icons/carekudos_15/vuesax/twotone/magic-star.png';
       case NotificationType.system:
         iconPath =
-            'assets/icons/CareKudos (16)/vuesax/twotone/notification.png';
+            'assets/icons/carekudos_16/vuesax/twotone/notification.png';
     }
 
     return Container(

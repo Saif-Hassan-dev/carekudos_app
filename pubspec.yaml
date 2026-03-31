@@ -102,24 +102,24 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-    - assets/icons/CareKudos (5)/other-icons/
-    - assets/icons/CareKudos (11)/
-    - assets/icons/CareKudos (11)/vuesax/twotone/
-    - assets/icons/CareKudos (12)/
-    - assets/icons/CareKudos (12)/vuesax/twotone/
-    - assets/icons/CareKudos (12)/vuesax/bulk/
-    - assets/icons/CareKudos (13)/
-    - assets/icons/CareKudos (13)/vuesax/twotone/
-    - assets/icons/CareKudos (14)/
-    - assets/icons/CareKudos (14)/vuesax/twotone/
-    - assets/icons/CareKudos (15)/
-    - assets/icons/CareKudos (15)/vuesax/twotone/
-    - assets/icons/CareKudos (16)/
-    - assets/icons/CareKudos (16)/vuesax/twotone/
-    - assets/icons/CareKudos (17)/
-    - assets/icons/CareKudos (17)/vuesax/twotone/
-    - assets/icons/CareKudos (18)/
-    - assets/icons/CareKudos (18)/vuesax/twotone/
+    - assets/icons/carekudos_5/other-icons/
+    - assets/icons/carekudos_11/
+    - assets/icons/carekudos_11/vuesax/twotone/
+    - assets/icons/carekudos_12/
+    - assets/icons/carekudos_12/vuesax/twotone/
+    - assets/icons/carekudos_12/vuesax/bulk/
+    - assets/icons/carekudos_13/
+    - assets/icons/carekudos_13/vuesax/twotone/
+    - assets/icons/carekudos_14/
+    - assets/icons/carekudos_14/vuesax/twotone/
+    - assets/icons/carekudos_15/
+    - assets/icons/carekudos_15/vuesax/twotone/
+    - assets/icons/carekudos_16/
+    - assets/icons/carekudos_16/vuesax/twotone/
+    - assets/icons/carekudos_17/
+    - assets/icons/carekudos_17/vuesax/twotone/
+    - assets/icons/carekudos_18/
+    - assets/icons/carekudos_18/vuesax/twotone/
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

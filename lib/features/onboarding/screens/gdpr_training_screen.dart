@@ -168,7 +168,7 @@ class _GdprTrainingScreenState extends State<GdprTrainingScreen> {
                           ),
                           const SizedBox(width: 8),
                           Image.asset(
-                            'assets/icons/CareKudos (16)/vuesax/twotone/timer.png',
+                            'assets/icons/carekudos_16/vuesax/twotone/timer.png',
                             width: 28,
                             height: 28,
                             errorBuilder: (_, __, ___) => const Icon(

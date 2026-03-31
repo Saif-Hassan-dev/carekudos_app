@@ -61,7 +61,7 @@ class HelpSupportScreen extends ConsumerWidget {
                     children: [
                       _CardRow(
                         iconPath:
-                            'assets/icons/CareKudos (15)/vuesax/twotone/message-question.png',
+                            'assets/icons/carekudos_15/vuesax/twotone/message-question.png',
                         title: 'FAQ',
                         subtitle: 'Contact support to proceed',
                         trailing: Icon(Icons.chevron_right,
@@ -78,7 +78,7 @@ class HelpSupportScreen extends ConsumerWidget {
                     children: [
                       _CardRow(
                         iconPath:
-                            'assets/icons/CareKudos (13)/vuesax/twotone/sms.png',
+                            'assets/icons/carekudos_13/vuesax/twotone/sms.png',
                         title: 'Contact support',
                         subtitle: 'support@carekudos.com',
                         trailing: Icon(Icons.chevron_right,
@@ -95,7 +95,7 @@ class HelpSupportScreen extends ConsumerWidget {
                     children: [
                       _CardRow(
                         iconPath:
-                            'assets/icons/CareKudos (15)/vuesax/twotone/info-circle.png',
+                            'assets/icons/carekudos_15/vuesax/twotone/info-circle.png',
                         title: 'Version 1.0.0',
                         trailing: Text(
                           'Not provided',

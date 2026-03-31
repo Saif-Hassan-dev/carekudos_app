@@ -60,7 +60,7 @@ class _GdprExplanationScreenState extends State<GdprExplanationScreen> {
                 width: 200,
                 height: 200,
                 child: Image.asset(
-                  'assets/images/qna icon.png',
+                  'assets/images/qna_icon.png',
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stack) => Container(
                     decoration: BoxDecoration(
