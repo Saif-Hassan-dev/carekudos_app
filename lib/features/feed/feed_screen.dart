@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/firebase_service.dart';
 import 'package:go_router/go_router.dart';
@@ -150,21 +151,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 child: Row(
                   children: [
-                    Image.asset(
-                      'assets/images/smallLogo.png',
-                      height: 28,
-                      width: 28,
+                    SvgPicture.asset(
+                      'assets/images/smallLogo.svg',
+                      width: 140,
                       fit: BoxFit.contain,
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'CareKudos',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A1A2E),
-                        letterSpacing: -0.3,
-                      ),
                     ),
                     const Spacer(),
                     GestureDetector(
@@ -352,7 +342,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                   onCreatePost: _navigateToCreatePost,
                 ),
 
-              // ── Feed List ──
+              // ── Feed List (achievements + my posts + feed all scroll together) ──
               Expanded(
                 child: userProfile.when(
                   loading: () => const LoadingView(message: 'Loading feed...'),
@@ -424,7 +414,15 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     }).toList();
 
                     if (approvedDocs.isEmpty) {
-                      return _buildEmptyState(context);
+                      return SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(children: [
+                          _AchievementsSummary(userId: user.uid),
+                          const _GdprGuideCard(),
+                          _MyPostsSection(userId: user.uid),
+                          _buildEmptyState(context),
+                        ]),
+                      );
                     }
 
                     return RefreshIndicator(
@@ -441,12 +439,25 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        itemCount: approvedDocs.length + (_hasMore ? 1 : 0),
+                            horizontal: 0, vertical: 0),
+                        itemCount: approvedDocs.length + 3 + (_hasMore ? 1 : 0),
                         addAutomaticKeepAlives: true,
                         itemBuilder: (context, index) {
+                          // Item 0: Achievements summary
+                          if (index == 0) {
+                            return _AchievementsSummary(userId: user.uid);
+                          }
+                          // Item 1: GDPR Guide quick access
+                          if (index == 1) {
+                            return const _GdprGuideCard();
+                          }
+                          // Item 2: My posts section
+                          if (index == 2) {
+                            return _MyPostsSection(userId: user.uid);
+                          }
+                          final postIndex = index - 3;
                           // Loading indicator at bottom
-                          if (index == approvedDocs.length) {
+                          if (postIndex == approvedDocs.length) {
                             return const Padding(
                               padding: EdgeInsets.all(16),
                               child: Center(
@@ -459,7 +470,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                             );
                           }
 
-                          final doc = approvedDocs[index];
+                          final doc = approvedDocs[postIndex];
                           final data = doc.data() as Map<String, dynamic>;
 
                           final currentUser = ref.read(currentUserProvider);
@@ -467,7 +478,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                           final hasGivenStar = currentUser != null &&
                               starredBy.contains(currentUser.uid);
 
-                          return RepaintBoundary(
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: RepaintBoundary(
                             child: _PostCard(
                             key: ValueKey(doc.id),
                             postId: doc.id,
@@ -482,6 +495,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                                 : DateTime.now(),
                             initialHasGivenStar: hasGivenStar,
                             onStarGiven: _showStarGivenSuccess,
+                          ),
                           ),
                           );
                         },
@@ -1199,5 +1213,567 @@ class _PostCardState extends ConsumerState<_PostCard>
         .map((w) =>
             w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
         .join(' ');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GDPR GUIDE CARD
+// ═══════════════════════════════════════════════════════════════
+
+class _GdprGuideCard extends StatelessWidget {
+  const _GdprGuideCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/gdpr-guidelines'),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0F4FF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFDBEAFE)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0A2C6B),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.shield_outlined,
+                  color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'GDPR Writing Guide',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0A2C6B),
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Learn how to write recognition posts that protect privacy',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: Color(0xFF0A2C6B), size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACHIEVEMENTS SUMMARY (C-06 fix)
+// ═══════════════════════════════════════════════════════════════
+
+class _AchievementsSummary extends ConsumerWidget {
+  final String userId;
+  const _AchievementsSummary({required this.userId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync = ref.watch(userProfileProvider);
+    return profileAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (profile) {
+        if (profile == null) return const SizedBox.shrink();
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row
+              Row(
+                children: [
+                  const Icon(Icons.emoji_events_rounded,
+                      color: Color(0xFFD4AF37), size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'My Achievements',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF212121),
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => context.push('/profile'),
+                    child: const Text(
+                      'View all',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0A2C6B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // Stats row
+              Row(
+                children: [
+                  _AchievementStat(
+                    icon: Icons.star_rounded,
+                    iconColor: const Color(0xFFFFB300),
+                    value: '${profile.totalStars}',
+                    label: 'Stars Received',
+                  ),
+                  _AchievementStat(
+                    icon: Icons.create_rounded,
+                    iconColor: const Color(0xFF0A2C6B),
+                    value: '${profile.postCount}',
+                    label: 'Posts Made',
+                  ),
+                  // Stars Given - live from Firestore
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('star_history')
+                        .where('giverId', isEqualTo: profile.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int given = 0;
+                      if (snapshot.hasData) {
+                        for (final doc in snapshot.data!.docs) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          given += (data['points'] as int?) ?? 1;
+                        }
+                      }
+                      return _AchievementStat(
+                        icon: Icons.star_border_rounded,
+                        iconColor: const Color(0xFF00BCD4),
+                        value: '$given',
+                        label: 'Stars Given',
+                      );
+                    },
+                  ),
+                  // Quality Score - live
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection(AppConstants.postsCollection)
+                        .where('authorId', isEqualTo: profile.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int score = 0;
+                      if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                        final total = snapshot.data!.docs.length;
+                        final avg = profile.totalStars / total;
+                        score = ((avg / 5.0) * 100).round().clamp(0, 100);
+                      }
+                      return _AchievementStat(
+                        icon: Icons.verified_rounded,
+                        iconColor: const Color(0xFF4CAF50),
+                        value: '$score%',
+                        label: 'Quality',
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Recent star history preview
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('star_history')
+                    .where('receiverId', isEqualTo: profile.uid)
+                    .limit(3)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  final stars = snapshot.data!.docs.toList();
+                  stars.sort((a, b) {
+                    final aT = (a.data() as Map<String, dynamic>)['createdAt']
+                        as Timestamp?;
+                    final bT = (b.data() as Map<String, dynamic>)['createdAt']
+                        as Timestamp?;
+                    if (aT == null || bT == null) return 0;
+                    return bT.compareTo(aT);
+                  });
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Recent Stars',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF757575),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...stars.map((doc) {
+                        final d = doc.data() as Map<String, dynamic>;
+                        final giver = d['giverName'] as String? ?? 'Someone';
+                        final points = (d['points'] as int?) ?? 1;
+                        final category = d['category'] as String?;
+                        final type = d['starType'] as String? ?? 'Peer';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Icon(
+                                type == 'Manager'
+                                    ? Icons.shield_rounded
+                                    : type == 'Family'
+                                        ? Icons.favorite_rounded
+                                        : Icons.star_rounded,
+                                color: const Color(0xFFD4AF37),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '$giver gave you $points ${points == 1 ? "star" : "stars"}${category != null ? " for $category" : ""}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF424242),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AchievementStat extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String value;
+  final String label;
+
+  const _AchievementStat({
+    required this.icon,
+    required this.iconColor,
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: iconColor, size: 22),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF212121),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Color(0xFF757575),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MY POSTS SECTION
+// ═══════════════════════════════════════════════════════════════
+
+class _MyPostsSection extends StatelessWidget {
+  final String userId;
+
+  const _MyPostsSection({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection(AppConstants.postsCollection)
+          .where('authorId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .limit(10)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final docs = snapshot.data?.docs ?? [];
+        // Filter client-side to avoid needing a composite index
+        final myPosts = docs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final status = data['approvalStatus'] as String?;
+          final isActive = data['isActive'] as bool? ?? true;
+          final isDeleted = data['isDeleted'] as bool? ?? false;
+          if (isDeleted || !isActive) return false;
+          return status == 'approved' || status == null;
+        }).toList();
+
+        if (myPosts.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0A2C6B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.article_outlined,
+                      size: 16,
+                      color: Color(0xFF0A2C6B),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'My Posts',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF3FB),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${myPosts.length}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0A2C6B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 152,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: myPosts.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final data =
+                      myPosts[index].data() as Map<String, dynamic>;
+                  final postId = myPosts[index].id;
+                  final content = data['content'] as String? ?? '';
+                  final category = data['category'] as String? ?? 'General';
+                  final stars = data['stars'] as int? ?? 0;
+                  final createdAt = data['createdAt'] != null
+                      ? (data['createdAt'] as Timestamp).toDate()
+                      : DateTime.now();
+                  final status = data['approvalStatus'] as String?;
+
+                  return GestureDetector(
+                    onTap: () => context.push('/post/$postId'),
+                    child: Container(
+                      width: 220,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: const Color(0xFFE8EAED), width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Category + status row
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: _myPostCategoryBg(category),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  category,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: _myPostCategoryFg(category),
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              if (status == 'pending')
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'Pending',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF92400E),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          // Content preview
+                          Expanded(
+                            child: Text(
+                              content,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF3C3C43),
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Footer: stars + time
+                          Row(
+                            children: [
+                              const Icon(Icons.star_rounded,
+                                  color: Color(0xFFD4AF37), size: 16),
+                              const SizedBox(width: 3),
+                              Text(
+                                '$stars',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1A1A2E),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                Formatters.timeAgo(createdAt),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFFB0B0B0),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
+        );
+      },
+    );
+  }
+
+  Color _myPostCategoryBg(String category) {
+    switch (category.toLowerCase()) {
+      case 'compassion':
+        return const Color(0xFFFFE0E6);
+      case 'teamwork':
+        return const Color(0xFFE0F0FF);
+      case 'excellence':
+        return const Color(0xFFE0FFF4);
+      case 'leadership':
+        return const Color(0xFFFFF8E0);
+      case 'reliability':
+        return const Color(0xFFEEF3FB);
+      case 'above & beyond':
+        return const Color(0xFFF3E8FF);
+      default:
+        return const Color(0xFFEEF3FB);
+    }
+  }
+
+  Color _myPostCategoryFg(String category) {
+    switch (category.toLowerCase()) {
+      case 'compassion':
+        return const Color(0xFFE53E5C);
+      case 'teamwork':
+        return const Color(0xFF2196F3);
+      case 'excellence':
+        return const Color(0xFF2FB9A3);
+      case 'leadership':
+        return const Color(0xFFB8962E);
+      case 'reliability':
+        return const Color(0xFF0A2C6B);
+      case 'above & beyond':
+        return const Color(0xFF7C3AED);
+      default:
+        return const Color(0xFF0A2C6B);
+    }
   }
 }

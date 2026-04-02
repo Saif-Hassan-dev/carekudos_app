@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -235,14 +236,10 @@ class _ManagerDashboardScreenState
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [
-          Image.asset(
-            'assets/images/smallLogo.png',
-            height: 30,
-            errorBuilder: (_, __, ___) => Text(
-              'CareKudos',
-              style: AppTypography.headingH4
-                  .copyWith(color: AppColors.primary),
-            ),
+          SvgPicture.asset(
+            'assets/images/smallLogo.svg',
+            width: 140,
+            fit: BoxFit.contain,
           ),
           const Spacer(),
           Container(

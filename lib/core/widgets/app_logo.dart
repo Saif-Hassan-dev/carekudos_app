@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 
 /// Logo sizes as defined in Figma design system
@@ -53,45 +54,10 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logo = _buildLogoIcon();
-
-    if (!showText) {
-      return logo;
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        logo,
-        const SizedBox(width: 8),
-        Text(
-          'CareKudos',
-          style: TextStyle(
-            fontSize: _dimension * 0.6,
-            fontWeight: FontWeight.w700,
-            color: AppColors.navy500,
-            letterSpacing: -0.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLogoIcon() {
-    // Use appropriate logo size based on dimension
-    final logoAsset = _dimension <= 24 
-        ? 'assets/images/smallLogo.png' 
-        : 'assets/images/bigLogo.png';
-    
-    return Image.asset(
-      logoAsset,
-      width: _dimension,
-      height: _dimension,
+    return SvgPicture.asset(
+      'assets/images/smallLogo.svg',
+      width: _dimension * 3.5,
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) {
-        // Fallback to placeholder icon if asset not found
-        return _buildPlaceholderLogo();
-      },
     );
   }
 
@@ -140,36 +106,17 @@ class AppLogoSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logoAsset = _dimension <= 24 
-        ? 'assets/images/smallLogo.png' 
-        : 'assets/images/bigLogo.png';
-    
     return SizedBox(
       width: _dimension,
       height: _dimension,
       child: Stack(
         children: [
           // Main logo
-          Image.asset(
-            logoAsset,
+          SvgPicture.asset(
+            'assets/images/smallLogo.svg',
             width: _dimension,
             height: _dimension,
             fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: _dimension,
-                height: _dimension,
-                decoration: BoxDecoration(
-                  color: AppColors.sky500,
-                  borderRadius: BorderRadius.circular(_dimension * 0.2),
-                ),
-                child: Icon(
-                  Icons.favorite,
-                  size: _dimension * 0.55,
-                  color: AppColors.neutral0,
-                ),
-              );
-            },
           ),
           // Settings gear overlay
           Positioned(

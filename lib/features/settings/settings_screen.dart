@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_notifier.dart';
@@ -24,11 +25,10 @@ class SettingsScreen extends ConsumerWidget {
                         size: 20, color: AppColors.textPrimary),
                     onPressed: () => context.pop(),
                   ),
-                  Text(
-                    'CareKudos',
-                    style: AppTypography.headingH3.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
+                  SvgPicture.asset(
+                    'assets/images/smallLogo.svg',
+                    width: 130,
+                    fit: BoxFit.contain,
                   ),
                 ],
               ),

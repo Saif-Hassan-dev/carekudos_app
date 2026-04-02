@@ -1896,23 +1896,61 @@ class _ReportsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(adminUsersProvider);
     final complianceAsync = ref.watch(adminComplianceProvider);
+    final analyticsAsync = ref.watch(adminAnalyticsOverviewProvider);
+    final engChartAsync = ref.watch(adminEngagementChartProvider);
+    final kudosChartAsync = ref.watch(adminKudosChartProvider);
 
     Future<void> exportEngagement() async {
       final users = usersAsync.valueOrNull ?? [];
-      final buf = StringBuffer('Name,Role,Organisation,Active,Kudos\n');
-      for (final u in users) {
-        buf.writeln('${u.fullName},${u.displayRole},${u.organizationId ?? ''},${u.statusLabel},0');
-      }
-      _downloadCsv(buf.toString(), 'engagement_report_${DateTime.now().millisecondsSinceEpoch}.csv');
+      final analytics = analyticsAsync.valueOrNull;
+      final engChart = engChartAsync.valueOrNull;
+      final kudosChart = kudosChartAsync.valueOrNull;
+      final compliance = complianceAsync.valueOrNull;
+      final totalUsers = users.length;
+      final engRate = totalUsers > 0
+          ? ((analytics?.monthlyActiveUsers ?? 0) / totalUsers * 100)
+          : 0.0;
+      PdfExport.exportEngagementReport(
+        users: users.map((u) => {
+          'name': u.fullName,
+          'role': u.displayRole,
+          'org': u.organizationId ?? '',
+          'status': u.statusLabel,
+          'kudos': '${u.totalStars}',
+        }).toList(),
+        dailyActiveUsers: analytics?.dailyActiveUsers ?? 0,
+        monthlyActiveUsers: analytics?.monthlyActiveUsers ?? 0,
+        totalKudosSent: analytics?.totalKudosSent ?? 0,
+        avgKudosPerUser: analytics?.avgKudosPerUser ?? 0,
+        engagementRate: engRate,
+        dailyChangePercent: analytics?.dailyChangePercent ?? 0,
+        monthlyChangePercent: analytics?.monthlyChangePercent ?? 0,
+        engagementDays: engChart?.dailyActive ?? [],
+        engagementMonths: engChart?.monthlyActive ?? [],
+        engagementLabels: engChart?.labels ?? [],
+        kudosSentByMonth: kudosChart?.sent ?? [],
+        kudosReceivedByMonth: kudosChart?.received ?? [],
+        kudosMonthLabels: kudosChart?.months ?? [],
+      );
     }
 
     Future<void> exportCompliance() async {
       final users = usersAsync.valueOrNull ?? [];
-      final buf = StringBuffer('Name,Role,Organisation,GDPR Training,Onboarding,Status\n');
-      for (final u in users) {
-        buf.writeln('${u.fullName},${u.displayRole},${u.organizationId ?? ''},${u.gdprTrainingCompleted ? 'Completed' : 'Pending'},${u.gdprConsentGiven ? 'Completed' : 'Pending'},${u.statusLabel}');
-      }
-      _downloadCsv(buf.toString(), 'training_compliance_${DateTime.now().millisecondsSinceEpoch}.csv');
+      final compliance = complianceAsync.valueOrNull;
+      PdfExport.exportComplianceReport(
+        users: users.map((u) => {
+          'name': u.fullName,
+          'role': u.displayRole,
+          'org': u.organizationId ?? '',
+          'gdpr': u.gdprTrainingCompleted ? 'Completed' : 'Pending',
+          'onboarding': u.gdprConsentGiven ? 'Completed' : 'Pending',
+          'status': u.statusLabel,
+        }).toList(),
+        gdprPercent: compliance?.gdprTrainingPercent ?? 0,
+        onboardingPercent: compliance?.onboardingCompletePercent ?? 0,
+        totalUsers: compliance?.totalUsers ?? users.length,
+        nonCompliantCount: compliance?.expiringCertifications ?? 0,
+      );
     }
 
     return _DashCard(
@@ -1936,17 +1974,7 @@ class _ReportsCard extends ConsumerWidget {
             subtitle: 'User activity & kudos metrics',
             buttonLabel: 'Export PDF',
             buttonColor: const Color(0xFF16A34A),
-            onExport: () {
-              PdfExport.exportEngagementReport(
-                users: (usersAsync.valueOrNull ?? []).map((u) => {
-                  'name': u.fullName,
-                  'role': u.displayRole,
-                  'org': u.organizationId ?? '',
-                  'status': u.statusLabel,
-                  'kudos': '${u.totalStars}',
-                }).toList(),
-              );
-            },
+            onExport: exportEngagement,
           ),
           const SizedBox(height: 16),
           _ReportItem(
@@ -1955,7 +1983,7 @@ class _ReportsCard extends ConsumerWidget {
             iconColor: const Color(0xFF7C3AED),
             title: 'Training Compliance',
             subtitle: 'GDPR & certification status',
-            buttonLabel: 'Export CSV',
+            buttonLabel: 'Export PDF',
             buttonColor: const Color(0xFF1E3A8A),
             onExport: exportCompliance,
           ),
@@ -6510,8 +6538,14 @@ class _ReportsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(adminUsersProvider);
     final complianceAsync = ref.watch(adminComplianceProvider);
+    final analyticsAsync = ref.watch(adminAnalyticsOverviewProvider);
+    final engChartAsync = ref.watch(adminEngagementChartProvider);
+    final kudosChartAsync = ref.watch(adminKudosChartProvider);
     final users = usersAsync.valueOrNull ?? [];
     final compliance = complianceAsync.valueOrNull;
+    final analytics = analyticsAsync.valueOrNull;
+    final engChart = engChartAsync.valueOrNull;
+    final kudosChart = kudosChartAsync.valueOrNull;
 
     void exportEngagementCsv() {
       final buf = StringBuffer('Name,Role,Organisation,Status,Kudos\n');
@@ -6522,6 +6556,10 @@ class _ReportsSection extends ConsumerWidget {
     }
 
     void exportEngagementPdf() {
+      final totalUsers = users.length;
+      final engRate = totalUsers > 0
+          ? ((analytics?.monthlyActiveUsers ?? 0) / totalUsers * 100)
+          : 0.0;
       PdfExport.exportEngagementReport(
         users: users.map((u) => {
           'name': u.fullName,
@@ -6530,6 +6568,19 @@ class _ReportsSection extends ConsumerWidget {
           'status': u.statusLabel,
           'kudos': '${u.totalStars}',
         }).toList(),
+        dailyActiveUsers: analytics?.dailyActiveUsers ?? 0,
+        monthlyActiveUsers: analytics?.monthlyActiveUsers ?? 0,
+        totalKudosSent: analytics?.totalKudosSent ?? 0,
+        avgKudosPerUser: analytics?.avgKudosPerUser ?? 0,
+        engagementRate: engRate,
+        dailyChangePercent: analytics?.dailyChangePercent ?? 0,
+        monthlyChangePercent: analytics?.monthlyChangePercent ?? 0,
+        engagementDays: engChart?.dailyActive ?? [],
+        engagementMonths: engChart?.monthlyActive ?? [],
+        engagementLabels: engChart?.labels ?? [],
+        kudosSentByMonth: kudosChart?.sent ?? [],
+        kudosReceivedByMonth: kudosChart?.received ?? [],
+        kudosMonthLabels: kudosChart?.months ?? [],
       );
     }
 
@@ -6553,6 +6604,8 @@ class _ReportsSection extends ConsumerWidget {
         }).toList(),
         gdprPercent: compliance?.gdprTrainingPercent ?? 0,
         onboardingPercent: compliance?.onboardingCompletePercent ?? 0,
+        totalUsers: compliance?.totalUsers ?? users.length,
+        nonCompliantCount: compliance?.expiringCertifications ?? 0,
       );
     }
 

@@ -603,14 +603,74 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed:
-                        _canSubmit && !_isLoading ? _createAccount : null,
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            if (_orgCodeController.text.trim().isEmpty) {
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Color(0xFFE65100),
+                                    size: 48,
+                                  ),
+                                  title: const Text(
+                                    'Organisation Code Required',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  content: const Text(
+                                    'You must enter an organisation code to register. '
+                                    'Please contact your care home manager to get your code.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF616161),
+                                    ),
+                                  ),
+                                  actions: [
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFF0A2C6B),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                        child: const Text('OK'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
+                            if (!_canSubmit) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Please fill in all required fields.'),
+                                  backgroundColor: Color(0xFFE65100),
+                                ),
+                              );
+                              return;
+                            }
+                            _createAccount();
+                          },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _canSubmit
-                          ? const Color(0xFF0A2C6B)
-                          : const Color(0xFFE0E0E0),
-                      foregroundColor:
-                          _canSubmit ? Colors.white : const Color(0xFFBDBDBD),
+                      backgroundColor: const Color(0xFF0A2C6B),
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),

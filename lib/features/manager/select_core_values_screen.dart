@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
@@ -101,28 +102,10 @@ class _SelectCoreValuesScreenState
                   children: [
                     const SizedBox(height: 12),
                     // ── Logo ──
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          'assets/images/smallLogo.png',
-                          height: 32,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.star,
-                            color: Color(0xFF0A2C6B),
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'CareKudos',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0A2C6B),
-                          ),
-                        ),
-                      ],
+                    SvgPicture.asset(
+                      'assets/images/smallLogo.svg',
+                      width: 160,
+                      fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 32),
 

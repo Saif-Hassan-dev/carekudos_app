@@ -421,11 +421,38 @@ class ProfileScreen extends ConsumerWidget {
                           }
                           
                           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return const Text(
-                              'No posts yet',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF757575),
+                            return Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 32),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F5F5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.article_outlined,
+                                    size: 40,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'No posts yet',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF757575),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Your published posts will appear here',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF9E9E9E),
+                                    ),
+                                  ),
+                                ],
                               ),
                             );
                           }

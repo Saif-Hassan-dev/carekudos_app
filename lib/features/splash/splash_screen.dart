@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
 
@@ -44,40 +45,40 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Logo ──
-              Image.asset(
-                'assets/images/bigLogo.png',
+              // ── Star Icon ──
+              SvgPicture.asset(
+                'assets/images/SplashScreenLogo.svg',
                 width: 120,
                 height: 120,
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  // Fallback star icon if asset is missing
-                  return Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0A2C6B),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: const Icon(
-                      Icons.star_rounded,
-                      size: 72,
-                      color: Colors.white,
-                    ),
-                  );
-                },
               ),
               const SizedBox(height: 24),
 
               // ── App Name ──
-              const Text(
-                'CareKudos',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0A2C6B),
-                  letterSpacing: -0.5,
-                  decoration: TextDecoration.none,
+              const Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Care',
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF202146),
+                        letterSpacing: -0.5,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'Kudos',
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF202146),
+                        letterSpacing: -0.5,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 8),

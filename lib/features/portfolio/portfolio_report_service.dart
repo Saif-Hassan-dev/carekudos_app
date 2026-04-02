@@ -158,7 +158,7 @@ class PortfolioReportService {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('CareKudos — Making Exceptional Care Visible',
+                pw.Text('CareKudos - Making Exceptional Care Visible',
                     style: pw.TextStyle(fontSize: 8, color: _gray)),
                 pw.Text(
                   'Generated: ${DateFormat('dd MMM yyyy').format(now)}',
@@ -716,7 +716,7 @@ class PortfolioReportService {
       pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text('CareKudos — Confidential',
+          pw.Text('CareKudos - Confidential',
               style: pw.TextStyle(fontSize: 8, color: _gray)),
           pw.Text('Page ${ctx.pageNumber} of ${ctx.pagesCount}',
               style: pw.TextStyle(fontSize: 8, color: _gray)),

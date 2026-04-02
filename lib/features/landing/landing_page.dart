@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -52,15 +53,15 @@ class _LandingPageState extends State<LandingPage> {
                 ),
                 SliverToBoxAdapter(child: _HeroSection(isWide: isWide)),
                 SliverToBoxAdapter(
+                  child: _RoiCalculatorSection(key: _roiKey),
+                ),
+                SliverToBoxAdapter(
                   child: _ChallengeAndSolution(key: _solutionsKey),
                 ),
                 SliverToBoxAdapter(
                   child: _PlatformFeatures(key: _platformKey),
                 ),
                 const SliverToBoxAdapter(child: _StarStorySection()),
-                SliverToBoxAdapter(
-                  child: _RoiCalculatorSection(key: _roiKey),
-                ),
                 const SliverToBoxAdapter(child: _TestimonialsSection()),
                 SliverToBoxAdapter(
                   child: _PricingSection(key: _pricingKey),
@@ -110,22 +111,8 @@ class _Navbar extends StatelessWidget {
       child: Row(
         children: [
           // Logo
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset('assets/images/smallLogo.png',
-                  width: 24, height: 24, fit: BoxFit.contain),
-              const SizedBox(width: 8),
-              Text(
-                'CareKudos',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF111827),
-                ),
-              ),
-            ],
-          ),
+          SvgPicture.asset('assets/images/smallLogo.svg',
+              width: 150, fit: BoxFit.contain),
 
           const Spacer(),
 
@@ -1510,7 +1497,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
               ),
               const SizedBox(height: 24),
               SizedBox(
-                height: 160,
+                height: 200,
                 child: _EngagementBarChart(),
               ),
             ],
@@ -1600,7 +1587,7 @@ class _EngagementBarChart extends StatelessWidget {
                         children: [
                           Container(
                             width: 14,
-                            height: values[i] * 1.3,
+                            height: values[i] * 1.1,
                             decoration: BoxDecoration(
                               color: colors[i].withValues(alpha: 0.5),
                               borderRadius:
@@ -1610,7 +1597,7 @@ class _EngagementBarChart extends StatelessWidget {
                           const SizedBox(width: 2),
                           Container(
                             width: 14,
-                            height: values[i] * 1.5,
+                            height: values[i] * 1.3,
                             decoration: BoxDecoration(
                               color: colors[i].withValues(alpha: 0.75),
                               borderRadius:
@@ -1620,7 +1607,7 @@ class _EngagementBarChart extends StatelessWidget {
                           const SizedBox(width: 2),
                           Container(
                             width: 14,
-                            height: values[i] * 1.7,
+                            height: values[i] * 1.5,
                             decoration: BoxDecoration(
                               color: colors[i],
                               borderRadius:
@@ -1795,25 +1782,36 @@ class _TestimonialsSectionState extends State<_TestimonialsSection>
 
   Widget _buildScrollColumn(List<_Testimonial> items, {required bool scrollUp}) {
     final loopedItems = [...items, ...items, ...items];
-    final columnWidget = Column(
-      children: loopedItems
-          .map((t) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _TestimonialCard(testimonial: t),
-              ))
-          .toList(),
-    );
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final totalHeight = items.length * 220.0;
-        final offset = (_controller.value * totalHeight) % totalHeight;
-        final dy = scrollUp ? -offset : -(totalHeight - offset);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight = constraints.maxHeight;
+        final columnWidget = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: loopedItems
+              .map((t) => Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _TestimonialCard(testimonial: t),
+                  ))
+              .toList(),
+        );
 
-        return Transform.translate(
-          offset: Offset(0, dy),
-          child: columnWidget,
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final totalHeight = items.length * 220.0;
+            final offset = (_controller.value * totalHeight) % totalHeight;
+            final dy = scrollUp ? -offset : -(totalHeight - offset);
+
+            return Transform.translate(
+              offset: Offset(0, dy),
+              child: OverflowBox(
+                maxHeight: totalHeight * 3,
+                alignment: Alignment.topCenter,
+                child: columnWidget,
+              ),
+            );
+          },
         );
       },
     );
@@ -2124,7 +2122,6 @@ class _PricingSection extends StatelessWidget {
             'Team dashboards',
             'Email Support',
           ].map((f) => _featureRow(f, const Color(0xFF1E3A8A))),
-          const Spacer(),
           const SizedBox(height: 28),
           SizedBox(
             width: double.infinity,
@@ -2257,7 +2254,6 @@ class _PricingSection extends StatelessWidget {
                 'Custom badges & awards',
                 'Priority support',
               ].map((f) => _featureRow(f, Colors.white, isLight: true)),
-              const Spacer(),
               const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
@@ -2404,7 +2400,6 @@ class _PricingSection extends StatelessWidget {
             'SLA guarantees',
             'Onboarding & training',
           ].map((f) => _featureRow(f, const Color(0xFF1E3A8A))),
-          const Spacer(),
           const SizedBox(height: 28),
           SizedBox(
             width: double.infinity,
@@ -2956,24 +2951,11 @@ class _FooterSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/images/smallLogo.png',
-              width: 28,
-              height: 28,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'CareKudos',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-          ],
+        SvgPicture.asset(
+          'assets/images/smallLogo.svg',
+          width: 150,
+          fit: BoxFit.contain,
+          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
         ),
         const SizedBox(height: 16),
         Text(

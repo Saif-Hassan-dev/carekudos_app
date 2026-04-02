@@ -442,16 +442,22 @@ class _CqcReportCard extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               final team = teamAsync.valueOrNull ?? [];
-              PdfExport.exportRecognitionReport(
+              final cqc = ref.read(cqcReportDataProvider).valueOrNull;
+              PdfExport.exportCqcEvidenceReport(
                 users: team.map((m) => {
                   'name': m.name,
                   'role': 'Care Worker',
                   'stars': '${m.totalStars}',
-                  'posts': '0',
                   'status': 'Active',
                 }).toList(),
-                totalKudos: team.fold<int>(0, (sum, m) => sum + m.totalStars),
-                totalPosts: 0,
+                totalRecognitions: cqc?.taggedRecognitions ?? 0,
+                valuesAlignedPosts: cqc?.monthlyValuesDistribution ?? 0,
+                valuesAlignmentPercent: cqc?.valuesAlignmentTrend ?? 0,
+                activeStaff: team.length,
+                teamRecognition: team.map((m) => <String, dynamic>{
+                  'name': m.name,
+                  'stars': m.totalStars,
+                }).toList(),
               );
             },
             style: ElevatedButton.styleFrom(
