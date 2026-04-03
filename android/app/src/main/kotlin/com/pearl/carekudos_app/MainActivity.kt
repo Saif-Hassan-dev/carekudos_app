@@ -1,4 +1,4 @@
-package com.example.carekudos_app
+package com.pearl.carekudos_app
 
 import io.flutter.embedding.android.FlutterActivity
 

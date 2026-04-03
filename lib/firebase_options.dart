@@ -41,39 +41,39 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAVGgnM44dCLyZu6WpNocJPXB7FJYmTArI',
-    appId: '1:919426591664:web:b38aba27e01e54e5b68475',
-    messagingSenderId: '919426591664',
-    projectId: 'carekudos-1',
-    authDomain: 'carekudos-1.firebaseapp.com',
-    storageBucket: 'carekudos-1.firebasestorage.app',
-    measurementId: 'G-W3DD0EK051',
+    apiKey: 'AIzaSyB6vPJaUxZemJiLxHH2DC5k8l7G9IbeuVM',
+    appId: '1:953085909678:web:8e3dae474f9cb48e31eb3f',
+    messagingSenderId: '953085909678',
+    projectId: 'carekudos-d1b04',
+    authDomain: 'carekudos-d1b04.firebaseapp.com',
+    storageBucket: 'carekudos-d1b04.firebasestorage.app',
+    measurementId: 'G-ESRSCQDJZ3',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBFZg3gJRfVM0no2M6S9o6xlIvdiqCJ_EM',
-    appId: '1:919426591664:android:ac4ee37f1d4d0189b68475',
-    messagingSenderId: '919426591664',
-    projectId: 'carekudos-1',
-    storageBucket: 'carekudos-1.firebasestorage.app',
+    apiKey: 'AIzaSyB3a-LXJ7vEPAHOvM6rZV8jtiQVC6Or4n8',
+    appId: '1:953085909678:android:dafc5e3aa58a022531eb3f',
+    messagingSenderId: '953085909678',
+    projectId: 'carekudos-d1b04',
+    storageBucket: 'carekudos-d1b04.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBtt7MsZRNuhuHG_bCimhRv5IAggpO5kKk',
-    appId: '1:919426591664:ios:adad9a529308dd39b68475',
-    messagingSenderId: '919426591664',
-    projectId: 'carekudos-1',
-    storageBucket: 'carekudos-1.firebasestorage.app',
-    iosBundleId: 'com.example.carekudosApp',
+    apiKey: 'AIzaSyCTs-IIjTfkheuDeDTGOqXqkdERGRHYwtQ',
+    appId: '1:953085909678:ios:b6599b31677902fc31eb3f',
+    messagingSenderId: '953085909678',
+    projectId: 'carekudos-d1b04',
+    storageBucket: 'carekudos-d1b04.firebasestorage.app',
+    iosBundleId: 'com.pearl.carekudos-app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBtt7MsZRNuhuHG_bCimhRv5IAggpO5kKk',
-    appId: '1:919426591664:ios:adad9a529308dd39b68475',
-    messagingSenderId: '919426591664',
-    projectId: 'carekudos-1',
-    storageBucket: 'carekudos-1.firebasestorage.app',
-    iosBundleId: 'com.example.carekudosApp',
+    apiKey: 'AIzaSyCTs-IIjTfkheuDeDTGOqXqkdERGRHYwtQ',
+    appId: '1:953085909678:ios:b6599b31677902fc31eb3f',
+    messagingSenderId: '953085909678',
+    projectId: 'carekudos-d1b04',
+    storageBucket: 'carekudos-d1b04.firebasestorage.app',
+    iosBundleId: 'com.pearl.carekudos-app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

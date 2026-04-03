@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "919426591664",
-    "project_id": "carekudos-1",
-    "storage_bucket": "carekudos-1.firebasestorage.app"
+    "project_number": "953085909678",
+    "project_id": "carekudos-d1b04",
+    "storage_bucket": "carekudos-d1b04.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:919426591664:android:ac4ee37f1d4d0189b68475",
+        "mobilesdk_app_id": "1:953085909678:android:dafc5e3aa58a022531eb3f",
         "android_client_info": {
-          "package_name": "com.example.carekudos_app"
+          "package_name": "com.pearl.carekudos_app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBFZg3gJRfVM0no2M6S9o6xlIvdiqCJ_EM"
+          "current_key": "AIzaSyB3a-LXJ7vEPAHOvM6rZV8jtiQVC6Or4n8"
         }
       ],
       "services": {
