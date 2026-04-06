@@ -14,7 +14,10 @@
       "Bash(find lib:*)",
       "Bash(sed -i 's/PRODUCT_BUNDLE_IDENTIFIER = com\\\\.example\\\\.carekudosApp;/PRODUCT_BUNDLE_IDENTIFIER = com.pearl.carekudos-app;/g' /home/salman-hassan/htdocs/carekudos_app/ios/Runner.xcodeproj/project.pbxproj)",
       "Bash(sed -i 's/PRODUCT_BUNDLE_IDENTIFIER = com\\\\.example\\\\.carekudosApp\\\\.RunnerTests;/PRODUCT_BUNDLE_IDENTIFIER = com.pearl.carekudos-app.RunnerTests;/g' /home/salman-hassan/htdocs/carekudos_app/ios/Runner.xcodeproj/project.pbxproj)",
-      "Bash(keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android)"
+      "Bash(keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android)",
+      "Bash(gcloud version:*)",
+      "Bash(git stash:*)",
+      "Bash(git pull:*)"
     ]
   }
 }

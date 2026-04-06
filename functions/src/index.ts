@@ -1,19 +1,25 @@
 import * as admin from "firebase-admin";
-import * as functions from "firebase-functions";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { logger } from "firebase-functions/v2";
 
 admin.initializeApp();
 
 const db = admin.firestore();
 const messaging = admin.messaging();
 
+const REGION = "europe-west1";
+
 // ─────────────────────────────────────────────────────────────
 // 1. ANNOUNCEMENT PUSH — fires when a new announcement is created
 //    Sends FCM to the "announcements" topic → ALL subscribed devices
 // ─────────────────────────────────────────────────────────────
-export const onAnnouncementCreated = functions.firestore
-  .document("announcements/{announcementId}")
-  .onCreate(async (snap) => {
-    const data = snap.data();
+export const onAnnouncementCreated = onDocumentCreated(
+  { document: "announcements/{announcementId}", region: REGION },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
     const title: string = data?.title ?? "New Announcement";
     const body: string = data?.message ?? "";
 
@@ -34,26 +40,30 @@ export const onAnnouncementCreated = functions.firestore
       },
       data: {
         type: "announcement",
-        announcementId: snap.id,
+        announcementId: event.data!.id,
         click_action: "FLUTTER_NOTIFICATION_CLICK",
       },
     };
 
     try {
       const response = await messaging.send(message);
-      functions.logger.info(`Announcement sent to topic. Message ID: ${response}`);
+      logger.info(`Announcement sent to topic. Message ID: ${response}`);
     } catch (error) {
-      functions.logger.error("Failed to send announcement:", error);
+      logger.error("Failed to send announcement:", error);
     }
-  });
+  }
+);
 
 // ─────────────────────────────────────────────────────────────
 // 2. QUEUED PUSH NOTIFICATIONS — processes push_notifications collection
 //    Handles individual notifications (stars, approvals, rejections)
 // ─────────────────────────────────────────────────────────────
-export const sendQueuedPushNotifications = functions.firestore
-  .document("push_notifications/{notifId}")
-  .onCreate(async (snap) => {
+export const sendQueuedPushNotifications = onDocumentCreated(
+  { document: "push_notifications/{notifId}", region: REGION },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
     const data = snap.data();
     if (!data || data.status !== "pending") return;
 
@@ -129,22 +139,20 @@ export const sendQueuedPushNotifications = functions.firestore
         failCount: fcmTokens.length - successCount,
       });
 
-      functions.logger.info(
-        `Push sent to ${recipientId}: ${successCount}/${fcmTokens.length} succeeded`
-      );
+      logger.info(`Push sent to ${recipientId}: ${successCount}/${fcmTokens.length} succeeded`);
     } catch (error) {
-      functions.logger.error("Failed to send queued push:", error);
+      logger.error("Failed to send queued push:", error);
       await snap.ref.update({ status: "failed", error: String(error) });
     }
-  });
+  }
+);
 
 // ─────────────────────────────────────────────────────────────
 // 3. TOKEN CLEANUP — removes stale FCM tokens periodically
 // ─────────────────────────────────────────────────────────────
-export const cleanupStaleTokens = functions.pubsub
-  .schedule("every 7 days")
-  .onRun(async () => {
-    // Remove users that haven't refreshed their token in 60 days
+export const cleanupStaleTokens = onSchedule(
+  { schedule: "every 168 hours", region: REGION },
+  async () => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 60);
 
@@ -159,5 +167,6 @@ export const cleanupStaleTokens = functions.pubsub
     });
 
     await batch.commit();
-    functions.logger.info(`Cleaned tokens for ${staleUsers.size} stale users`);
-  });
+    logger.info(`Cleaned tokens for ${staleUsers.size} stale users`);
+  }
+);
