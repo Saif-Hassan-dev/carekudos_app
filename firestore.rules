@@ -27,8 +27,8 @@ service cloud.firestore {
       // Anyone authenticated can read any user profile
       allow read: if isSignedIn();
       
-      // Only the user can create their own profile
-      allow create: if isSignedIn() && isOwner(userId);
+      // User can create their own profile; admin can create any profile
+      allow create: if isSignedIn() && (isOwner(userId) || isAdmin());
       
       // Owner can update anything; admins/managers can update role/status; others can only increment star fields
       allow update: if isSignedIn()

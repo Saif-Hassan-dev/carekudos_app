@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 
 admin.initializeApp();
@@ -148,7 +149,73 @@ export const sendQueuedPushNotifications = onDocumentCreated(
 );
 
 // ─────────────────────────────────────────────────────────────
-// 3. TOKEN CLEANUP — removes stale FCM tokens periodically
+// 3. ADMIN CREATE USER — callable function to create Auth + Firestore user
+//    Only callable by admins. Creates Firebase Auth account and Firestore doc.
+// ─────────────────────────────────────────────────────────────
+export const adminCreateUser = onCall(
+  { region: REGION },
+  async (request) => {
+    // Must be signed in
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "You must be signed in.");
+    }
+
+    // Must be admin
+    const callerDoc = await db.collection("users").doc(request.auth.uid).get();
+    if (callerDoc.data()?.role !== "admin") {
+      throw new HttpsError("permission-denied", "Only admins can create users.");
+    }
+
+    const { email, password, firstName, lastName, role, organizationId } = request.data as {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+      organizationId: string;
+    };
+
+    if (!email || !password || !firstName || !lastName) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+
+    // Create Firebase Auth user
+    let userRecord: admin.auth.UserRecord;
+    try {
+      userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: `${firstName} ${lastName}`,
+      });
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code;
+      if (code === "auth/email-already-exists") {
+        throw new HttpsError("already-exists", "A user with this email already exists.");
+      }
+      throw new HttpsError("internal", `Failed to create auth user: ${String(err)}`);
+    }
+
+    // Create Firestore user document with the real UID
+    await db.collection("users").doc(userRecord.uid).set({
+      firstName,
+      lastName,
+      email,
+      role: role ?? "care_worker",
+      organizationId: organizationId ?? "",
+      gdprConsentGiven: false,
+      gdprTrainingCompleted: false,
+      totalStars: 0,
+      starsThisMonth: 0,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    logger.info(`Admin created user: ${userRecord.uid} (${email})`);
+    return { uid: userRecord.uid };
+  }
+);
+
+// ─────────────────────────────────────────────────────────────
+// 4. TOKEN CLEANUP — removes stale FCM tokens periodically
 // ─────────────────────────────────────────────────────────────
 export const cleanupStaleTokens = onSchedule(
   { schedule: "every 168 hours", region: REGION },

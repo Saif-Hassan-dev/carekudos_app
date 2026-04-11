@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../../../core/utils/constants.dart';
 import '../../../core/auth/permissions_provider.dart';
 
@@ -1141,19 +1142,19 @@ Future<void> addAdminUser({
   required String firstName,
   required String lastName,
   required String email,
+  required String password,
   required String role,
   String organizationId = '',
 }) async {
-  await _firestore.collection(AppConstants.usersCollection).add({
+  final callable = FirebaseFunctions.instanceFor(region: 'europe-west1')
+      .httpsCallable('adminCreateUser');
+  await callable.call({
     'firstName': firstName,
     'lastName': lastName,
     'email': email,
+    'password': password,
     'role': role,
     'organizationId': organizationId,
-    'gdprConsentGiven': false,
-    'gdprTrainingCompleted': false,
-    'totalStars': 0,
-    'createdAt': FieldValue.serverTimestamp(),
   });
 }
 

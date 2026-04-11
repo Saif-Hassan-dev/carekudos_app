@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 
 /// Cross-platform branded CareKudos report service.
@@ -1431,7 +1434,31 @@ class ReportService {
 
   static Future<void> _sharePdf(pw.Document pdf, String name) async {
     final bytes = await pdf.save();
-    final ts = DateTime.now().millisecondsSinceEpoch;
-    await Printing.sharePdf(bytes: bytes, filename: '${name}_$ts.pdf');
+    final ts = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    final filename = '${name}_$ts.pdf';
+
+    if (!kIsWeb && Platform.isAndroid) {
+      // Save directly to Downloads folder on Android
+      try {
+        final dir = Directory('/storage/emulated/0/Download');
+        if (await dir.exists()) {
+          final file = File('${dir.path}/$filename');
+          await file.writeAsBytes(bytes);
+          return;
+        }
+      } catch (_) {}
+      // Fallback to app external storage if Downloads not accessible
+      try {
+        final dir = await getExternalStorageDirectory();
+        if (dir != null) {
+          final file = File('${dir.path}/$filename');
+          await file.writeAsBytes(bytes);
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // iOS / web fallback - use share sheet
+    await Printing.sharePdf(bytes: bytes, filename: filename);
   }
 }

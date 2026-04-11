@@ -2999,9 +2999,11 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
   final _orgCtrl = TextEditingController();
   String _role = 'care_worker';
   bool _saving = false;
+  bool _obscurePassword = true;
   String? _error;
 
   @override
@@ -3009,6 +3011,7 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _emailCtrl.dispose();
+    _passwordCtrl.dispose();
     _orgCtrl.dispose();
     super.dispose();
   }
@@ -3024,6 +3027,7 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
         firstName: _firstNameCtrl.text.trim(),
         lastName: _lastNameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text,
         role: _role,
         organizationId: _orgCtrl.text.trim(),
       );
@@ -3128,6 +3132,27 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
                 },
               ),
               const SizedBox(height: 14),
+              TextFormField(
+                controller: _passwordCtrl,
+                obscureText: _obscurePassword,
+                decoration: _field('Password', hint: 'Min. 8 characters').copyWith(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      size: 18,
+                      color: const Color(0xFF6B7280),
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Required';
+                  if (v.length < 8) return 'Minimum 8 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 value: _role,
                 decoration: _field('Role'),
@@ -3150,7 +3175,7 @@ class _AddUserDialogState extends ConsumerState<_AddUserDialog> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Note: A Firestore profile will be created. The user will need Firebase Auth credentials to log in.',
+                'A Firebase Auth account and profile will be created. The user can log in immediately with the email and password you set.',
                 style: GoogleFonts.inter(
                     fontSize: 11.5, color: const Color(0xFF9CA3AF)),
               ),
