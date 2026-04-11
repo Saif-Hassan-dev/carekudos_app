@@ -603,7 +603,7 @@ class _ChallengeColumn extends StatelessWidget {
           iconBg: const Color(0xFFF0F4FF),
           title: 'Recognition is invisible',
           subtitle:
-              'Efforts go unnoticed, morale drops, and turnover rises.',
+              'Great care happens every day – then disappears. Staff feel unseen, morale drops, and turnover rises.',
         ),
         const SizedBox(height: 24),
         _ChallengeItem(
@@ -611,15 +611,15 @@ class _ChallengeColumn extends StatelessWidget {
           iconBg: const Color(0xFFF0F4FF),
           title: 'Compliance is overwhelming',
           subtitle:
-              'Spreadsheets fail. Deadlines are missed. Audits create anxiety.',
+              'CQC expects evidence of positive culture. Managers waste hours hunting through WhatsApp, paper notes, and spreadsheets.',
         ),
         const SizedBox(height: 24),
         _ChallengeItem(
-          icon: Icons.sentiment_dissatisfied_outlined,
+          icon: Icons.trending_down_outlined,
           iconBg: const Color(0xFFF0F4FF),
-          title: 'Engagement feels impossible',
+          title: 'Retention is crumbling',
           subtitle:
-              'No time, no tools, no structure to build culture that lasts.',
+              '82% of care staff feel underappreciated. Replacing one care worker costs £13,000+. The cycle never ends.',
         ),
       ],
     );
@@ -739,22 +739,41 @@ class _SolutionCard extends StatelessWidget {
           const SizedBox(height: 28),
           _SolutionItem(
             icon: Icons.visibility_outlined,
-            title: 'Recognition is invisible',
+            title: 'Recognition becomes visible',
             subtitle:
-                'Efforts go unnoticed, morale drops, and turnover rises.',
+                'Staff post achievements in 30 seconds. Peers, managers, and families give stars. Great work is seen and celebrated.',
           ),
           const SizedBox(height: 20),
           _SolutionItem(
             icon: Icons.assignment_turned_in_outlined,
-            title: 'Compliance is overwhelming',
-            subtitle: 'Spreadsheets fail. Deadlines are missed.',
+            title: 'Compliance becomes automatic',
+            subtitle:
+                'One click generates CQC-ready evidence – Well-Led metrics, reflective practice logs, and morale trends. No spreadsheets.',
           ),
           const SizedBox(height: 20),
           _SolutionItem(
-            icon: Icons.emoji_emotions_outlined,
-            title: 'Engagement feels impossible',
+            icon: Icons.insights_outlined,
+            title: 'Retention becomes measurable',
             subtitle:
-                'No time, no tools, no structure to build culture that lasts.',
+                'Real-time dashboard shows values adoption, Rising Stars, and retention risks. You see who\'s thriving – and who needs support.',
+          ),
+          const SizedBox(height: 28),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F4FF),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFDBE4FF)),
+            ),
+            child: Text(
+              '"What gets recognised gets repeated. CareKudos turns daily care into inspection-ready evidence."',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: const Color(0xFF1E3A8A),
+                fontStyle: FontStyle.italic,
+                height: 1.6,
+              ),
+            ),
           ),
         ],
       ),
@@ -918,15 +937,175 @@ class _PlatformFeatures extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CLIPBOARD ANALYTICS ICON — used in CQC Evidence Ready card
+// ═══════════════════════════════════════════════════════════════
+
+class _ClipboardAnalyticsIcon extends StatelessWidget {
+  const _ClipboardAnalyticsIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 220,
+      width: 220,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F4FF),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Center(
+        child: SizedBox(
+          width: 120,
+          height: 140,
+          child: CustomPaint(
+            painter: _ClipboardBarsPainter(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClipboardBarsPainter extends CustomPainter {
+  const _ClipboardBarsPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const primaryBlue = Color(0xFF1E3A8A);
+    const accentGold = Color(0xFFD4AF37);
+    const barGreen = Color(0xFF28A745);
+
+    final boardPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    final boardStroke = Paint()
+      ..color = primaryBlue
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeJoin = StrokeJoin.round;
+
+    // Document body (full height, rounded corners)
+    final boardRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      const Radius.circular(8),
+    );
+    canvas.drawRRect(boardRect, boardPaint);
+    canvas.drawRRect(boardRect, boardStroke);
+
+    // Dog-ear top-right fold — replaces the clipboard clip
+    const fold = 18.0;
+    final foldPath = Path()
+      ..moveTo(size.width - fold, 14)
+      ..lineTo(size.width - fold, 14 + fold)
+      ..lineTo(size.width, 14 + fold)
+      ..close();
+    canvas.drawPath(foldPath, Paint()..color = const Color(0xFFE0E7FF));
+    canvas.drawPath(foldPath,
+        Paint()
+          ..color = primaryBlue
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5);
+
+    // ── Text lines at bottom of document ──
+    final textLinePaint = Paint()
+      ..color = const Color(0xFFCBD5E1)
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    final lineYs = [size.height * 0.73, size.height * 0.82, size.height * 0.91];
+    final lineWs = [size.width * 0.60, size.width * 0.72, size.width * 0.44];
+    for (int i = 0; i < lineYs.length; i++) {
+      canvas.drawLine(
+        Offset(size.width * 0.12, lineYs[i]),
+        Offset(size.width * 0.12 + lineWs[i], lineYs[i]),
+        textLinePaint,
+      );
+    }
+
+    // ── Stock market chart ──
+    final cl = size.width * 0.10;
+    final cr = size.width * 0.88;
+    final ct = size.height * 0.20;
+    final cb = size.height * 0.65;
+    final cw = cr - cl;
+    final ch = cb - ct;
+
+    final pts = [
+      Offset(cl + cw * 0.00, ct + ch * 0.72),
+      Offset(cl + cw * 0.14, ct + ch * 0.48),
+      Offset(cl + cw * 0.26, ct + ch * 0.68),
+      Offset(cl + cw * 0.40, ct + ch * 0.36),
+      Offset(cl + cw * 0.52, ct + ch * 0.54),
+      Offset(cl + cw * 0.66, ct + ch * 0.20),
+      Offset(cl + cw * 0.80, ct + ch * 0.34),
+      Offset(cl + cw * 1.00, ct + ch * 0.04),
+    ];
+
+    // Green fill under line
+    final fillPath = Path()..moveTo(pts.first.dx, cb);
+    for (final p in pts) {
+      fillPath.lineTo(p.dx, p.dy);
+    }
+    fillPath.lineTo(pts.last.dx, cb);
+    fillPath.close();
+    canvas.drawPath(fillPath, Paint()..color = barGreen.withValues(alpha: 0.09));
+
+    // Dashed gold grid line
+    final dashPaint = Paint()
+      ..color = accentGold.withValues(alpha: 0.50)
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+    double dx = cl;
+    final gridY = ct + ch * 0.36;
+    while (dx < cr) {
+      canvas.drawLine(Offset(dx, gridY), Offset(dx + 4, gridY), dashPaint);
+      dx += 8;
+    }
+
+    // Stock line
+    final stockPath = Path()..moveTo(pts[0].dx, pts[0].dy);
+    for (int i = 1; i < pts.length; i++) {
+      stockPath.lineTo(pts[i].dx, pts[i].dy);
+    }
+    canvas.drawPath(
+      stockPath,
+      Paint()
+        ..color = barGreen
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeJoin = StrokeJoin.round
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Peak dots
+    final white = Paint()..color = Colors.white;
+    for (final p in [pts[1], pts[3], pts[5]]) {
+      canvas.drawCircle(p, 3.0, Paint()..color = barGreen);
+      canvas.drawCircle(p, 1.5, white);
+    }
+    // Last dot — gold
+    canvas.drawCircle(pts.last, 4.5, Paint()..color = accentGold);
+    canvas.drawCircle(pts.last, 2.0, white);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FEATURE CARD
+// ═══════════════════════════════════════════════════════════════
+
 class _FeatureCard extends StatefulWidget {
   final String title;
   final String description;
   final String imagePath;
+  final Widget? customIcon;
 
   const _FeatureCard({
     required this.title,
     required this.description,
     required this.imagePath,
+    this.customIcon,
   });
 
   factory _FeatureCard.frontlineFirst() => const _FeatureCard(
@@ -943,9 +1122,10 @@ class _FeatureCard extends StatefulWidget {
       );
 
   factory _FeatureCard.meaningfulRewards() => const _FeatureCard(
-        title: 'Meaningful Rewards',
-        description: 'From vouchers to extra leave.',
-        imagePath: 'assets/images/meaningful_rewards.png',
+        title: 'CQC Evidence Ready',
+        description: 'One-click reports for Well-Led inspections.',
+        imagePath: '',
+        customIcon: _ClipboardAnalyticsIcon(),
       );
 
   factory _FeatureCard.engagementAnalytics() => const _FeatureCard(
@@ -1011,30 +1191,32 @@ class _FeatureCardState extends State<_FeatureCard> {
             ),
             const SizedBox(height: 20),
             Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  widget.imagePath,
-                  height: 220,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 220,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(12),
+              child: widget.customIcon != null
+                  ? widget.customIcon!
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        widget.imagePath,
+                        height: 220,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 220,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.image_outlined,
+                                size: 48,
+                                color: Color(0xFF9CA3AF),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_outlined,
-                          size: 48,
-                          color: Color(0xFF9CA3AF),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+                    ),
             ),
           ],
         ),
